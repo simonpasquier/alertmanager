@@ -298,7 +298,7 @@ func (a *Alert) Merge(o *Alert) *Alert {
 	res := *o
 
 	// Always pick the earliest starting time.
-	if a.StartsAt.Before(o.StartsAt) {
+	if o.StartsAt.IsZero() || a.StartsAt.Before(o.StartsAt) {
 		res.StartsAt = a.StartsAt
 	}
 

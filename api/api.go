@@ -484,8 +484,8 @@ func (api *API) insertAlerts(w http.ResponseWriter, r *http.Request, alerts ...*
 	for _, alert := range alerts {
 		alert.UpdatedAt = now
 
-		// Ensure StartsAt is set.
-		if alert.StartsAt.IsZero() {
+		// Ensure StartsAt is set if neither StartsAt nor EndsAt is set.
+		if alert.StartsAt.IsZero() && alert.EndsAt.IsZero() {
 			alert.StartsAt = now
 		}
 		// If no end time is defined, set a timeout after which an alert

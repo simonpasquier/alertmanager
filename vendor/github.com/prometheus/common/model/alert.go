@@ -83,8 +83,8 @@ func (a *Alert) Status() AlertStatus {
 
 // Validate checks whether the alert data is inconsistent.
 func (a *Alert) Validate() error {
-	if a.StartsAt.IsZero() {
-		return fmt.Errorf("start time missing")
+	if a.StartsAt.IsZero() && a.EndsAt.IsZero() {
+		return fmt.Errorf("start time and end time missing")
 	}
 	if !a.EndsAt.IsZero() && a.EndsAt.Before(a.StartsAt) {
 		return fmt.Errorf("start time must be before end time")
