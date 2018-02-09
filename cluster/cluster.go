@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"sort"
@@ -42,6 +41,15 @@ const (
 	DefaultProbeTimeout     = 500 * time.Millisecond
 	DefaultProbeInterval    = 1 * time.Second
 )
+
+type IoLogger struct {
+	log.Logger
+}
+
+func (l IoLogger) Write(p []byte) (int, error) {
+	level.Debug(l).Log("msg", string(p))
+	return len(p), nil
+}
 
 func Join(
 	l log.Logger,
@@ -120,7 +128,7 @@ func Join(
 	cfg.TCPTimeout = tcpTimeout
 	cfg.ProbeTimeout = probeTimeout
 	cfg.ProbeInterval = probeInterval
-	cfg.LogOutput = ioutil.Discard
+	cfg.LogOutput = &IoLogger{l}
 
 	if advertiseAddr != "" {
 		cfg.AdvertiseAddr = advertiseHost
