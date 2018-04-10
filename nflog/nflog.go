@@ -250,14 +250,6 @@ func decodeState(r io.Reader) (state, error) {
 	return st, nil
 }
 
-func marshalMeshEntry(e *pb.MeshEntry) ([]byte, error) {
-	var buf bytes.Buffer
-	if _, err := pbutil.WriteDelimited(&buf, e); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 // New creates a new notification log based on the provided options.
 // The snapshot is loaded into the Log if it is set.
 func New(opts ...Option) (*Log, error) {
@@ -389,12 +381,12 @@ func (l *Log) Log(r *pb.Receiver, gkey string, firingAlerts, resolvedAlerts []ui
 		ExpiresAt: now.Add(l.retention),
 	}
 
-	b, err := marshalMeshEntry(e)
-	if err != nil {
+	var buf bytes.Buffer
+	if _, err := pbutil.WriteDelimited(&buf, e); err != nil {
 		return err
 	}
 	l.st.merge(e)
-	l.broadcast(b)
+	l.broadcast(buf.Bytes())
 
 	return nil
 }

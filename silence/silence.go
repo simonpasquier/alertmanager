@@ -388,13 +388,13 @@ func (s *Silences) setSilence(sil *pb.Silence) error {
 		Silence:   sil,
 		ExpiresAt: sil.EndsAt.Add(s.retention),
 	}
-	b, err := marshalMeshSilence(msil)
-	if err != nil {
+	var buf bytes.Buffer
+	if _, err := pbutil.WriteDelimited(&buf, msil); err != nil {
 		return err
 	}
 
 	s.st.merge(msil)
-	s.broadcast(b)
+	s.broadcast(buf.Bytes())
 
 	return nil
 }
@@ -767,14 +767,6 @@ func decodeState(r io.Reader) (state, error) {
 		return nil, err
 	}
 	return st, nil
-}
-
-func marshalMeshSilence(e *pb.MeshSilence) ([]byte, error) {
-	var buf bytes.Buffer
-	if _, err := pbutil.WriteDelimited(&buf, e); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
 
 // replaceFile wraps a file that is moved to another filename on closing.
