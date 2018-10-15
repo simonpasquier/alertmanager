@@ -55,8 +55,10 @@ func TestOversizedMessagesGossiped(t *testing.T) {
 	}
 	defer f.Close()
 
-	buf := new(bytes.Buffer)
-	toCopy := int64(800)
+	size := 800
+	b := make([]byte, size)
+	buf := bytes.NewBuffer(b)
+	toCopy := int64(size)
 	if n, err := io.CopyN(buf, f, toCopy); err != nil {
 		t.Fatalf("failed to copy bytes: %v", err)
 	} else if n != toCopy {
