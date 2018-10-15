@@ -1,3 +1,7 @@
+os:
+- linux
+- windows
+
 sudo: false
 language: go
 
@@ -10,10 +14,20 @@ go:
 - 1.11.x
 
 script:
-# test front-end
-- make clean
-- cd ui/app/ && make && cd ../..
-- make assets
-- git diff --exit-code
-# test back-end
-- make
+- |
+  (
+    set -Eeuo pipefail
+    set -x
+    if [ "$TRAVIS_OS_NAME" = 'windows' ]; then
+      go test -v ./...
+    else
+      # test front-end
+      make clean
+      cd ui/app/ && make && cd ../..
+      make assets
+      git diff --exit-code
+      # test back-end
+      make
+    fi
+  )
+
