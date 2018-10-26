@@ -33,6 +33,13 @@ STATICCHECK  := $(FIRST_GOPATH)/bin/staticcheck
 GOVENDOR     := $(FIRST_GOPATH)/bin/govendor
 pkgs          = ./...
 
+GOTEST       := $(GO) test
+ifneq ($(CIRCLE_JOB),)
+ifneq ($(shell which gotestsum),)
+	GOTEST := gotestsum --junitfile ~/test-results/unit-tests.xml --
+endif
+endif
+
 PREFIX                  ?= $(shell pwd)
 BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
@@ -70,12 +77,12 @@ common-check_license:
 .PHONY: common-test-short
 common-test-short:
 	@echo ">> running short tests"
-	$(GO) test -short $(pkgs)
+	$(GOTEST) -short $(pkgs)
 
 .PHONY: common-test
 common-test:
 	@echo ">> running all tests"
-	$(GO) test -race $(pkgs)
+	$(GOTEST) -race $(pkgs)
 
 .PHONY: common-format
 common-format:

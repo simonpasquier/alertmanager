@@ -9,6 +9,8 @@ services:
 go:
 - 1.11.x
 
+go_import_path: github.com/prometheus/alertmanager
+
 script:
 # test front-end
 - make clean

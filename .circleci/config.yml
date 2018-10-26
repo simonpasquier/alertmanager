@@ -16,8 +16,14 @@ jobs:
     steps:
     - checkout
     - setup_remote_docker
+    - run: mkdir ~/test-results
     - run: make promu
     - run: make
+    - store_test_results:
+        path: ~/test-results
+    - store_artifacts:
+        path: ~/test-results
+        destination: /test-results
     - store_artifacts:
         path: alertmanager
         destination: /build/alertmanager
