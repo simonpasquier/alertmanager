@@ -29,16 +29,17 @@ import (
 	"github.com/hashicorp/memberlist"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/discovery/dns"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
 // Peer is a single peer in a gossip cluster.
 type Peer struct {
 	mlist    *memberlist.Memberlist
 	delegate *delegate
-
-	resolvedPeers []string
 
 	mtx    sync.RWMutex
 	states map[string]State
@@ -49,8 +50,14 @@ type Peer struct {
 	peers       map[string]peer
 	failedPeers []peer
 
-	knownPeers    []string
+	knownPeers []string
+	peerc      chan []string
+
 	advertiseAddr string
+
+	// SD stuff
+	sd       *discovery.Manager
+	sdCancel context.CancelFunc
 
 	failedReconnectionsCounter prometheus.Counter
 	reconnectionsCounter       prometheus.Counter
@@ -128,6 +135,7 @@ func Create(
 		return nil, errors.Wrap(err, "invalid listen address")
 	}
 
+	// Verify that the provided address to advertise is valid.
 	var advertiseHost string
 	var advertisePort int
 	if advertiseAddr != "" {
@@ -142,20 +150,10 @@ func Create(
 		}
 	}
 
-	resolvedPeers, err := resolvePeers(context.Background(), knownPeers, advertiseAddr, net.Resolver{}, waitIfEmpty)
-	if err != nil {
-		return nil, errors.Wrap(err, "resolve peers")
-	}
-	level.Debug(l).Log("msg", "resolved peers to following addresses", "peers", strings.Join(resolvedPeers, ","))
-
-	// Initial validation of user-specified advertise address.
+	// Initial validation of the user-specified advertise address.
 	addr, err := calculateAdvertiseAddress(bindHost, advertiseHost)
 	if err != nil {
 		level.Warn(l).Log("err", "couldn't deduce an advertise address: "+err.Error())
-	} else if hasNonlocal(resolvedPeers) && isUnroutable(addr.String()) {
-		level.Warn(l).Log("err", "this node advertises itself on an unroutable address", "addr", addr.String())
-		level.Warn(l).Log("err", "this node will be unreachable in the cluster")
-		level.Warn(l).Log("err", "provide --cluster.advertise-address as a routable IP address or hostname")
 	} else if isAny(bindAddr) && advertiseHost == "" {
 		// memberlist doesn't advertise properly when the bind address is empty or unspecified.
 		level.Info(l).Log("msg", "setting advertise address explicitly", "addr", addr.String(), "port", bindPort)
@@ -169,14 +167,29 @@ func Create(
 		return nil, err
 	}
 
+	// Setup the service discovery.
+	ctx, cancel := context.WithCancel(context.Background())
+	sd := discovery.NewManager(ctx, l, discovery.Name("cluster"), discovery.WaitDuration(1*time.Millisecond))
+	providers := make([]discovery.Provider, 0)
+	for _, addr := range knownPeers {
+		providers = append(providers, newProviders(addr, l)...)
+	}
+	err = sd.ApplyConfig(providers)
+	if err != nil {
+		return nil, err
+	}
+
 	p := &Peer{
-		states:        map[string]State{},
-		stopc:         make(chan struct{}),
-		readyc:        make(chan struct{}),
-		logger:        l,
-		peers:         map[string]peer{},
-		resolvedPeers: resolvedPeers,
-		knownPeers:    knownPeers,
+		states:     map[string]State{},
+		stopc:      make(chan struct{}),
+		readyc:     make(chan struct{}),
+		peerc:      make(chan []string),
+		logger:     l,
+		peers:      map[string]peer{},
+		knownPeers: make([]string, 0),
+
+		sd:       sd,
+		sdCancel: cancel,
 	}
 
 	p.register(reg)
@@ -205,9 +218,6 @@ func Create(
 	if advertiseHost != "" {
 		cfg.AdvertiseAddr = advertiseHost
 		cfg.AdvertisePort = advertisePort
-		p.setInitialFailed(resolvedPeers, fmt.Sprintf("%s:%d", advertiseHost, advertisePort))
-	} else {
-		p.setInitialFailed(resolvedPeers, bindAddr)
 	}
 
 	ml, err := memberlist.Create(cfg)
@@ -215,22 +225,108 @@ func Create(
 		return nil, errors.Wrap(err, "create memberlist")
 	}
 	p.mlist = ml
+	p.advertiseAddr = ml.LocalNode().Address()
+
+	go p.runSD(ctx)
+
 	return p, nil
 }
 
-func (p *Peer) Join(
-	reconnectInterval time.Duration,
-	reconnectTimeout time.Duration) error {
-	n, err := p.mlist.Join(p.resolvedPeers)
-	if err != nil {
-		level.Warn(p.logger).Log("msg", "failed to join cluster", "err", err)
-		if reconnectInterval != 0 {
-			level.Info(p.logger).Log("msg", fmt.Sprintf("will retry joining cluster every %v", reconnectInterval.String()))
+func (p *Peer) runSD(ctx context.Context) {
+	go func() {
+		p.sd.Run()
+		level.Info(p.logger).Log("msg", "cluster service discovery stopped")
+	}()
+
+	for {
+		select {
+		case tsets := <-p.sd.SyncCh():
+			level.Debug(p.logger).Log("msg", "received updates from the service discovery")
+			peers := make([]string, 0)
+			present := make(map[string]struct{})
+			for _, tset := range tsets {
+				for _, tg := range tset {
+					for _, t := range tg.Targets {
+						addr := string(t[model.AddressLabel])
+						if addr == p.advertiseAddr {
+							// Don't include ourselves.
+							continue
+						}
+						if _, ok := present[addr]; ok {
+							continue
+						}
+						peers = append(peers, addr)
+					}
+				}
+			}
+
+			select {
+			case p.peerc <- peers:
+			case <-ctx.Done():
+				return
+			}
+
+		case <-ctx.Done():
+			return
 		}
-	} else {
-		level.Debug(p.logger).Log("msg", "joined cluster", "peers", n)
 	}
 
+}
+
+// newProviders returns a list of SD providers from a given address.
+func newProviders(addr string, l log.Logger) []discovery.Provider {
+	const refresh = model.Duration(time.Minute)
+	var cfgs []dns.SDConfig
+
+	host, port, err := net.SplitHostPort(addr)
+	if err == nil {
+		ip := net.ParseIP(host)
+		if ip != nil {
+			// This is already an IP address.
+			return []discovery.Provider{
+				discovery.NewProvider(addr, staticAddress(addr)),
+			}
+		}
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			level.Warn(l).Log("msg", "invalid address port", "err", err)
+			return nil
+		}
+		cfgs = []dns.SDConfig{
+			{
+				RefreshInterval: refresh,
+				Type:            "A",
+				Names:           []string{addr},
+				Port:            portInt,
+			},
+			{
+				RefreshInterval: refresh,
+				Type:            "AAAA",
+				Names:           []string{addr},
+				Port:            portInt,
+			}}
+	} else {
+		// Assume that it is a SRV record.
+		cfgs = []dns.SDConfig{
+			{
+				RefreshInterval: refresh,
+				Type:            "SRV",
+				Names:           []string{addr},
+			},
+		}
+	}
+
+	providers := make([]discovery.Provider, len(cfgs))
+	for i, cfg := range cfgs {
+		d := dns.NewDiscovery(cfg, l)
+		providers = append(providers, discovery.NewProvider(fmt.Sprintf("%s/%d", addr, i), d))
+
+	}
+	return providers
+}
+
+// Start initiates the process to join the cluster.
+func (p *Peer) Start(reconnectInterval time.Duration, reconnectTimeout time.Duration) {
 	if reconnectInterval != 0 {
 		go p.handleReconnect(reconnectInterval)
 	}
@@ -238,52 +334,56 @@ func (p *Peer) Join(
 		go p.handleReconnectTimeout(5*time.Minute, reconnectTimeout)
 	}
 	go p.handleRefresh(DefaultRefreshInterval)
-
-	return err
 }
 
-// All peers are initially added to the failed list. They will be removed from
-// this list in peerJoin when making their initial connection.
-func (p *Peer) setInitialFailed(peers []string, myAddr string) {
-	if len(peers) == 0 {
-		return
+// handleRefresh reconnects with known peers either when they are discovered or when the connection is lost.
+func (p *Peer) handleRefresh(d time.Duration) {
+	for {
+		t := time.NewTimer(d)
+		select {
+		case <-p.stopc:
+			return
+		case peers := <-p.peerc:
+			if !t.Stop() {
+				<-t.C
+			}
+			level.Debug(p.logger).Log("msg", "received updated peers list", "peers", strings.Join(peers, ","))
+			if hasNonlocal(peers) && isUnroutable(p.advertiseAddr) {
+				level.Warn(p.logger).Log("err", "this node advertises itself on an unroutable address", "addr", p.advertiseAddr)
+				level.Warn(p.logger).Log("err", "this node will be unreachable in the cluster")
+				level.Warn(p.logger).Log("err", "provide --cluster.advertise-address as a routable IP address or hostname")
+			}
+			// TODO: clean up peers that were known before but are now gone?
+			p.knownPeers = peers
+			p.refresh()
+		case <-t.C:
+			p.refresh()
+		}
 	}
+}
 
-	p.peerLock.RLock()
-	defer p.peerLock.RUnlock()
+func (p *Peer) refresh() {
+	logger := log.With(p.logger, "msg", "refresh known peers")
 
-	now := time.Now()
-	for _, peerAddr := range peers {
-		if peerAddr == myAddr {
-			// Don't add ourselves to the initially failing list,
-			// we don't connect to ourselves.
-			continue
-		}
-		host, port, err := net.SplitHostPort(peerAddr)
-		if err != nil {
-			continue
-		}
-		ip := net.ParseIP(host)
-		if ip == nil {
-			// Don't add textual addresses since memberlist only advertises
-			// dotted decimal or IPv6 addresses.
-			continue
-		}
-		portUint, err := strconv.ParseUint(port, 10, 16)
-		if err != nil {
-			continue
+	members := p.mlist.Members()
+	for _, peer := range p.knownPeers {
+		var isPeerFound bool
+		for _, member := range members {
+			if member.Address() == peer {
+				isPeerFound = true
+				break
+			}
 		}
 
-		pr := peer{
-			status:    StatusFailed,
-			leaveTime: now,
-			Node: &memberlist.Node{
-				Addr: ip,
-				Port: uint16(portUint),
-			},
+		if !isPeerFound {
+			if _, err := p.mlist.Join([]string{peer}); err != nil {
+				p.failedRefreshCounter.Inc()
+				level.Warn(logger).Log("result", "failure", "addr", peer)
+			} else {
+				p.refreshCounter.Inc()
+				level.Debug(logger).Log("result", "success", "addr", peer)
+			}
 		}
-		p.failedPeers = append(p.failedPeers, pr)
-		p.peers[peerAddr] = pr
 	}
 }
 
@@ -341,6 +441,7 @@ func (p *Peer) register(reg prometheus.Registerer) {
 		p.peerLeaveCounter, p.peerUpdateCounter, p.peerJoinCounter, p.refreshCounter, p.failedRefreshCounter)
 }
 
+// handleReconnectTimeout periodically cleans the list of disconnected peers.
 func (p *Peer) handleReconnectTimeout(d time.Duration, timeout time.Duration) {
 	tick := time.NewTicker(d)
 	defer tick.Stop()
@@ -355,6 +456,7 @@ func (p *Peer) handleReconnectTimeout(d time.Duration, timeout time.Duration) {
 	}
 }
 
+// removeFailedPeers forgets about peers that haven't been seen for the given duration.
 func (p *Peer) removeFailedPeers(timeout time.Duration) {
 	p.peerLock.Lock()
 	defer p.peerLock.Unlock()
@@ -374,6 +476,7 @@ func (p *Peer) removeFailedPeers(timeout time.Duration) {
 	p.failedPeers = keep
 }
 
+// handleReconnect periodically tries to reconnect to lost peers.
 func (p *Peer) handleReconnect(d time.Duration) {
 	tick := time.NewTicker(d)
 	defer tick.Stop()
@@ -388,6 +491,7 @@ func (p *Peer) handleReconnect(d time.Duration) {
 	}
 }
 
+// reconnect tries to reconnect to lost peers.
 func (p *Peer) reconnect() {
 	p.peerLock.RLock()
 	failedPeers := p.failedPeers
@@ -408,51 +512,7 @@ func (p *Peer) reconnect() {
 	}
 }
 
-func (p *Peer) handleRefresh(d time.Duration) {
-	tick := time.NewTicker(d)
-	defer tick.Stop()
-
-	for {
-		select {
-		case <-p.stopc:
-			return
-		case <-tick.C:
-			p.refresh()
-		}
-	}
-}
-
-func (p *Peer) refresh() {
-	logger := log.With(p.logger, "msg", "refresh")
-
-	resolvedPeers, err := resolvePeers(context.Background(), p.knownPeers, p.advertiseAddr, net.Resolver{}, false)
-	if err != nil {
-		level.Debug(logger).Log("peers", p.knownPeers, "err", err)
-		return
-	}
-
-	members := p.mlist.Members()
-	for _, peer := range resolvedPeers {
-		var isPeerFound bool
-		for _, member := range members {
-			if member.Address() == peer {
-				isPeerFound = true
-				break
-			}
-		}
-
-		if !isPeerFound {
-			if _, err := p.mlist.Join([]string{peer}); err != nil {
-				p.failedRefreshCounter.Inc()
-				level.Warn(logger).Log("result", "failure", "addr", peer)
-			} else {
-				p.refreshCounter.Inc()
-				level.Debug(logger).Log("result", "success", "addr", peer)
-			}
-		}
-	}
-}
-
+// peerJoin is called by the memberlist library whenever a new peer connects.
 func (p *Peer) peerJoin(n *memberlist.Node) {
 	p.peerLock.Lock()
 	defer p.peerLock.Unlock()
@@ -481,6 +541,7 @@ func (p *Peer) peerJoin(n *memberlist.Node) {
 	}
 }
 
+// peerLeave is called by the memberlist library whenever a peer disconnects.
 func (p *Peer) peerLeave(n *memberlist.Node) {
 	p.peerLock.Lock()
 	defer p.peerLock.Unlock()
@@ -501,6 +562,7 @@ func (p *Peer) peerLeave(n *memberlist.Node) {
 	level.Debug(p.logger).Log("msg", "peer left", "peer", pr.Node)
 }
 
+// peerUpdate is called by the memberlist library whenever a peer updates its metadata.
 func (p *Peer) peerUpdate(n *memberlist.Node) {
 	p.peerLock.Lock()
 	defer p.peerLock.Unlock()
@@ -543,8 +605,9 @@ func (p *Peer) AddState(key string, s State, reg prometheus.Registerer) *Channel
 }
 
 // Leave the cluster, waiting up to timeout.
-func (p *Peer) Leave(timeout time.Duration) error {
+func (p *Peer) Stop(timeout time.Duration) error {
 	close(p.stopc)
+	p.sdCancel()
 	level.Debug(p.logger).Log("msg", "leaving cluster")
 	return p.mlist.Leave(timeout)
 }
@@ -679,75 +742,6 @@ func (b simpleBroadcast) Message() []byte                       { return []byte(
 func (b simpleBroadcast) Invalidates(memberlist.Broadcast) bool { return false }
 func (b simpleBroadcast) Finished()                             {}
 
-func resolvePeers(ctx context.Context, peers []string, myAddress string, res net.Resolver, waitIfEmpty bool) ([]string, error) {
-	var resolvedPeers []string
-
-	for _, peer := range peers {
-		host, port, err := net.SplitHostPort(peer)
-		if err != nil {
-			return nil, errors.Wrapf(err, "split host/port for peer %s", peer)
-		}
-
-		retryCtx, cancel := context.WithCancel(ctx)
-
-		ips, err := res.LookupIPAddr(ctx, host)
-		if err != nil {
-			// Assume direct address.
-			resolvedPeers = append(resolvedPeers, peer)
-			continue
-		}
-
-		if len(ips) == 0 {
-			var lookupErrSpotted bool
-
-			err := retry(2*time.Second, retryCtx.Done(), func() error {
-				if lookupErrSpotted {
-					// We need to invoke cancel in next run of retry when lookupErrSpotted to preserve LookupIPAddr error.
-					cancel()
-				}
-
-				ips, err = res.LookupIPAddr(retryCtx, host)
-				if err != nil {
-					lookupErrSpotted = true
-					return errors.Wrapf(err, "IP Addr lookup for peer %s", peer)
-				}
-
-				ips = removeMyAddr(ips, port, myAddress)
-				if len(ips) == 0 {
-					if !waitIfEmpty {
-						return nil
-					}
-					return errors.New("empty IPAddr result. Retrying")
-				}
-
-				return nil
-			})
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		for _, ip := range ips {
-			resolvedPeers = append(resolvedPeers, net.JoinHostPort(ip.String(), port))
-		}
-	}
-
-	return resolvedPeers, nil
-}
-
-func removeMyAddr(ips []net.IPAddr, targetPort string, myAddr string) []net.IPAddr {
-	var result []net.IPAddr
-
-	for _, ip := range ips {
-		if net.JoinHostPort(ip.String(), targetPort) == myAddr {
-			continue
-		}
-		result = append(result, ip)
-	}
-
-	return result
-}
-
 func hasNonlocal(clusterPeers []string) bool {
 	for _, peer := range clusterPeers {
 		if host, _, err := net.SplitHostPort(peer); err == nil {
@@ -781,24 +775,6 @@ func isAny(addr string) bool {
 	return addr == "" || net.ParseIP(addr).IsUnspecified()
 }
 
-// retry executes f every interval seconds until timeout or no error is returned from f.
-func retry(interval time.Duration, stopc <-chan struct{}, f func() error) error {
-	tick := time.NewTicker(interval)
-	defer tick.Stop()
-
-	var err error
-	for {
-		if err = f(); err == nil {
-			return nil
-		}
-		select {
-		case <-stopc:
-			return err
-		case <-tick.C:
-		}
-	}
-}
-
 func removeOldPeer(old []peer, addr string) []peer {
 	new := make([]peer, 0, len(old))
 	for _, p := range old {
@@ -808,4 +784,21 @@ func removeOldPeer(old []peer, addr string) []peer {
 	}
 
 	return new
+}
+
+type staticAddress string
+
+// Run implements the Discoverer interface.
+func (s staticAddress) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
+	select {
+	case ch <- []*targetgroup.Group{
+		{
+			Targets: []model.LabelSet{{
+				model.AddressLabel: model.LabelValue(s),
+			}},
+			Source: string(s),
+		},
+	}:
+	case <-ctx.Done():
+	}
 }

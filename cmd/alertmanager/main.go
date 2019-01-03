@@ -260,17 +260,14 @@ func run() int {
 
 	// Peer state listeners have been registered, now we can join and get the initial state.
 	if peer != nil {
-		err = peer.Join(
+		peer.Start(
 			*reconnectInterval,
 			*peerReconnectTimeout,
 		)
-		if err != nil {
-			level.Warn(logger).Log("msg", "unable to join gossip mesh", "err", err)
-		}
 		ctx, cancel := context.WithTimeout(context.Background(), *settleTimeout)
 		defer func() {
 			cancel()
-			if err := peer.Leave(10 * time.Second); err != nil {
+			if err := peer.Stop(10 * time.Second); err != nil {
 				level.Warn(logger).Log("msg", "unable to leave gossip mesh", "err", err)
 			}
 		}()

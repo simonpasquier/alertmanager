@@ -92,14 +92,26 @@ func TestMatcherMatch(t *testing.T) {
 	}{
 		{matcher: Matcher{Name: "label", Value: "value"}, expected: true},
 		{matcher: Matcher{Name: "label", Value: "val"}, expected: false},
+		{matcher: Matcher{Name: "label", Value: "val"}, expected: false},
 		{matcher: Matcher{Name: "label", Value: "val.*", IsRegex: true}, expected: true},
 		{matcher: Matcher{Name: "label", Value: "diffval.*", IsRegex: true}, expected: false},
 		//unset label
 		{matcher: Matcher{Name: "difflabel", Value: "value"}, expected: false},
+		{matcher: Matcher{Name: "foo", Value: "(true|)", IsRegex: true}, expected: true},
 	}
 
 	lset := model.LabelSet{"label": "value"}
 	for _, test := range tests {
+		test.matcher.Init()
+
+		actual := test.matcher.Match(lset)
+		require.EqualValues(t, test.expected, actual)
+	}
+	lset = model.LabelSet{"foo": "true"}
+	for i, test := range tests {
+		if i != 6 {
+			continue
+		}
 		test.matcher.Init()
 
 		actual := test.matcher.Match(lset)
