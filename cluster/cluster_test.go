@@ -16,7 +16,6 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -39,10 +38,9 @@ func TestClusterJoinAndReconnect(t *testing.T) {
 }
 
 func testJoinLeave(t *testing.T) {
-	//logger := log.NewNopLogger()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	p, err := Create(
-		log.With(logger, "instance", "1"),
+		logger,
 		prometheus.NewRegistry(),
 		"0.0.0.0:0",
 		"",
@@ -68,7 +66,7 @@ func testJoinLeave(t *testing.T) {
 
 	// Create the peer who joins the first.
 	p2, err := Create(
-		log.With(logger, "instance", "2"),
+		logger,
 		prometheus.NewRegistry(),
 		"0.0.0.0:0",
 		"",
@@ -226,47 +224,3 @@ func retry(ctx context.Context, interval time.Duration, f func() error) error {
 		}
 	}
 }
-
-//func testInitiallyFailingPeers(t *testing.T) {
-//	logger := log.NewNopLogger()
-//	myAddr := "1.2.3.4:5000"
-//	peerAddrs := []string{myAddr, "2.3.4.5:5000", "3.4.5.6:5000", "foo.example.com:5000"}
-//	p, err := Create(
-//		logger,
-//		prometheus.NewRegistry(),
-//		"0.0.0.0:0",
-//		"",
-//		[]string{},
-//		true,
-//		DefaultPushPullInterval,
-//		DefaultGossipInterval,
-//		DefaultTcpTimeout,
-//		DefaultProbeTimeout,
-//		DefaultProbeInterval,
-//	)
-//	require.NoError(t, err)
-//	require.NotNil(t, p)
-//	p.Start(
-//		DefaultReconnectInterval,
-//		DefaultReconnectTimeout,
-//	)
-//
-//	p.setInitialFailed(peerAddrs, myAddr)
-//
-//	// We shouldn't have added "our" bind addr and the FQDN address to the
-//	// failed peers list.
-//	require.Equal(t, len(peerAddrs)-2, len(p.failedPeers))
-//	for _, addr := range peerAddrs {
-//		if addr == myAddr || addr == "foo.example.com:5000" {
-//			continue
-//		}
-//
-//		pr, ok := p.peers[addr]
-//		require.True(t, ok)
-//		require.Equal(t, StatusFailed.String(), pr.status.String())
-//		require.Equal(t, addr, pr.Address())
-//		expectedLen := len(p.failedPeers) - 1
-//		p.peerJoin(pr.Node)
-//		require.Equal(t, expectedLen, len(p.failedPeers))
-//	}
-//}

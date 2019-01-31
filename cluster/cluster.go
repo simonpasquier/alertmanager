@@ -53,8 +53,6 @@ type Peer struct {
 	knownPeers []string
 	peerc      chan []string
 
-	advertiseAddr string
-
 	// SD stuff
 	sd       *discovery.Manager
 	sdCancel context.CancelFunc
@@ -225,52 +223,14 @@ func Create(
 		return nil, errors.Wrap(err, "create memberlist")
 	}
 	p.mlist = ml
-	p.advertiseAddr = ml.LocalNode().Address()
 
-	go p.runSD(ctx)
-
-	return p, nil
-}
-
-func (p *Peer) runSD(ctx context.Context) {
 	go func() {
-		p.sd.Run()
-		level.Info(p.logger).Log("msg", "cluster service discovery stopped")
+		level.Debug(p.logger).Log("msg", "starting cluster service discovery")
+		_ = p.sd.Run()
+		level.Debug(p.logger).Log("msg", "cluster service discovery stopped")
 	}()
 
-	for {
-		select {
-		case tsets := <-p.sd.SyncCh():
-			level.Debug(p.logger).Log("msg", "received updates from the service discovery")
-			peers := make([]string, 0)
-			present := make(map[string]struct{})
-			for _, tset := range tsets {
-				for _, tg := range tset {
-					for _, t := range tg.Targets {
-						addr := string(t[model.AddressLabel])
-						if addr == p.advertiseAddr {
-							// Don't include ourselves.
-							continue
-						}
-						if _, ok := present[addr]; ok {
-							continue
-						}
-						peers = append(peers, addr)
-					}
-				}
-			}
-
-			select {
-			case p.peerc <- peers:
-			case <-ctx.Done():
-				return
-			}
-
-		case <-ctx.Done():
-			return
-		}
-	}
-
+	return p, nil
 }
 
 // newProviders returns a list of SD providers from a given address.
@@ -336,25 +296,45 @@ func (p *Peer) Start(reconnectInterval time.Duration, reconnectTimeout time.Dura
 	go p.handleRefresh(DefaultRefreshInterval)
 }
 
-// handleRefresh reconnects with known peers either when they are discovered or when the connection is lost.
+// handleRefresh reconnects with known peers either as they are discovered or when the connection is lost.
 func (p *Peer) handleRefresh(d time.Duration) {
 	for {
 		t := time.NewTimer(d)
 		select {
 		case <-p.stopc:
 			return
-		case peers := <-p.peerc:
+		case tsets := <-p.sd.SyncCh():
 			if !t.Stop() {
 				<-t.C
 			}
-			level.Debug(p.logger).Log("msg", "received updated peers list", "peers", strings.Join(peers, ","))
-			if hasNonlocal(peers) && isUnroutable(p.advertiseAddr) {
-				level.Warn(p.logger).Log("err", "this node advertises itself on an unroutable address", "addr", p.advertiseAddr)
+			level.Debug(p.logger).Log("msg", "received updates from the service discovery")
+			// De-duplicate addresses.
+			peers := make([]string, 0)
+			present := make(map[string]struct{})
+			for _, tset := range tsets {
+				for _, tg := range tset {
+					for _, t := range tg.Targets {
+						addr := string(t[model.AddressLabel])
+						if addr == p.AdvertiseAddress() {
+							continue
+						}
+						if _, ok := present[addr]; ok {
+							continue
+						}
+						peers = append(peers, addr)
+					}
+				}
+			}
+
+			if hasNonlocal(peers) && isUnroutable(p.AdvertiseAddress()) {
+				level.Warn(p.logger).Log("err", "this node advertises itself on an unroutable address", "addr", p.AdvertiseAddress())
 				level.Warn(p.logger).Log("err", "this node will be unreachable in the cluster")
 				level.Warn(p.logger).Log("err", "provide --cluster.advertise-address as a routable IP address or hostname")
 			}
-			// TODO: clean up peers that were known before but are now gone?
+			level.Debug(p.logger).Log("msg", "peers list updated", "peers", strings.Join(peers, ","))
+			// TODO: disconnect from peers that were known before but are now gone?
 			p.knownPeers = peers
+
 			p.refresh()
 		case <-t.C:
 			p.refresh()
@@ -604,12 +584,17 @@ func (p *Peer) AddState(key string, s State, reg prometheus.Registerer) *Channel
 	return NewChannel(key, send, peers, sendOversize, p.logger, p.stopc, reg)
 }
 
-// Leave the cluster, waiting up to timeout.
+// Stop leaves the cluster, waiting up to timeout.
 func (p *Peer) Stop(timeout time.Duration) error {
 	close(p.stopc)
 	p.sdCancel()
 	level.Debug(p.logger).Log("msg", "leaving cluster")
 	return p.mlist.Leave(timeout)
+}
+
+// AdvertiseAddress returns the address advertised by this peer in the cluster.
+func (p *Peer) AdvertiseAddress() string {
+	return p.mlist.LocalNode().Address()
 }
 
 // Name returns the unique ID of this peer in the cluster.
@@ -622,7 +607,7 @@ func (p *Peer) ClusterSize() int {
 	return p.mlist.NumMembers()
 }
 
-// Return true when router has settled.
+// Ready returns true when router has settled.
 func (p *Peer) Ready() bool {
 	select {
 	case <-p.readyc:
@@ -632,18 +617,17 @@ func (p *Peer) Ready() bool {
 	return false
 }
 
-// Wait until Settle() has finished.
+// WaitReady waits until Settle() has finished.
 func (p *Peer) WaitReady() {
 	<-p.readyc
 }
 
-// Return a status string representing the peer state.
+// Status returns a status string representing the peer state.
 func (p *Peer) Status() string {
 	if p.Ready() {
 		return "ready"
-	} else {
-		return "settling"
 	}
+	return "settling"
 }
 
 // Info returns a JSON-serializable dump of cluster state.
