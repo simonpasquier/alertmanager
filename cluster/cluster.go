@@ -224,12 +224,6 @@ func Create(
 	}
 	p.mlist = ml
 
-	go func() {
-		level.Debug(p.logger).Log("msg", "starting cluster service discovery")
-		_ = p.sd.Run()
-		level.Debug(p.logger).Log("msg", "cluster service discovery stopped")
-	}()
-
 	return p, nil
 }
 
@@ -238,19 +232,23 @@ func newProviders(addr string, l log.Logger) []discovery.Provider {
 	const refresh = model.Duration(time.Minute)
 	var cfgs []dns.SDConfig
 
+	if addr == "" {
+		return nil
+	}
+
 	host, port, err := net.SplitHostPort(addr)
 	if err == nil {
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			level.Warn(l).Log("msg", "invalid address port", "err", err)
+			return nil
+		}
 		ip := net.ParseIP(host)
 		if ip != nil {
 			// This is already an IP address.
 			return []discovery.Provider{
 				discovery.NewProvider(addr, staticAddress(addr)),
 			}
-		}
-		portInt, err := strconv.Atoi(port)
-		if err != nil {
-			level.Warn(l).Log("msg", "invalid address port", "err", err)
-			return nil
 		}
 		cfgs = []dns.SDConfig{
 			{
@@ -276,11 +274,10 @@ func newProviders(addr string, l log.Logger) []discovery.Provider {
 		}
 	}
 
-	providers := make([]discovery.Provider, len(cfgs))
+	providers := make([]discovery.Provider, 0, len(cfgs))
 	for i, cfg := range cfgs {
 		d := dns.NewDiscovery(cfg, l)
 		providers = append(providers, discovery.NewProvider(fmt.Sprintf("%s/%d", addr, i), d))
-
 	}
 	return providers
 }
@@ -294,6 +291,12 @@ func (p *Peer) Start(reconnectInterval time.Duration, reconnectTimeout time.Dura
 		go p.handleReconnectTimeout(5*time.Minute, reconnectTimeout)
 	}
 	go p.handleRefresh(DefaultRefreshInterval)
+
+	go func() {
+		level.Debug(p.logger).Log("msg", "starting cluster service discovery")
+		_ = p.sd.Run()
+		level.Debug(p.logger).Log("msg", "cluster service discovery stopped")
+	}()
 }
 
 // handleRefresh reconnects with known peers either as they are discovered or when the connection is lost.

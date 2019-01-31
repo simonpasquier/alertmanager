@@ -224,3 +224,36 @@ func retry(ctx context.Context, interval time.Duration, f func() error) error {
 		}
 	}
 }
+
+func TestNewProviders(t *testing.T) {
+	tests := []struct {
+		address string
+		exp     int
+	}{
+		{
+			address: "",
+			exp:     0,
+		},
+		{
+			address: "127.0.0.1:xxx",
+			exp:     0,
+		},
+		{
+			address: "127.0.0.1:9095",
+			exp:     1,
+		},
+		{
+			address: "www.example.com:9095",
+			exp:     2,
+		},
+		{
+			address: "gossip.www.example.com",
+			exp:     1,
+		},
+	}
+
+	for _, tc := range tests {
+		p := newProviders(tc.address, log.NewNopLogger())
+		require.Equal(t, tc.exp, len(p))
+	}
+}
