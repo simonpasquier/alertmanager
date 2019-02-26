@@ -19,7 +19,7 @@ require (
 	github.com/kylelemons/godebug v0.0.0-20160406211939-eadb3ce320cb
 	github.com/matttproud/golang_protobuf_extensions v1.0.1
 	github.com/oklog/oklog v0.0.0-20170918173356-f857583a70c3
-	github.com/oklog/ulid v0.0.0-20170117200651-66bb6560562f
+	github.com/oklog/ulid v0.3.0
 	github.com/pkg/errors v0.8.0
 	github.com/prometheus/client_golang v0.9.2
 	github.com/prometheus/common v0.2.0
