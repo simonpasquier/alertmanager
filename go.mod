@@ -9,7 +9,7 @@ require (
 	github.com/cenkalti/backoff v0.0.0-20181003080854-62661b46c409
 	github.com/cespare/xxhash v0.0.0-20181017004759-096ff4a8a059
 	github.com/docker/go-units v0.3.3 // indirect
-	github.com/go-kit/kit v0.0.0-20171021132459-e2b298466b32
+	github.com/go-kit/kit v0.8.0
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
 	github.com/go-openapi/analysis v0.0.0-20180710011727-3c8fe72ed5d3 // indirect
 	github.com/go-openapi/errors v0.0.0-20180515155515-b2b2befaf267
