@@ -10,7 +10,7 @@ require (
 	github.com/go-openapi/spec v0.17.2
 	github.com/go-openapi/strfmt v0.17.2
 	github.com/go-openapi/swag v0.17.2
-	github.com/go-openapi/validate v0.17.2
+	github.com/go-openapi/validate v0.18.0
 	github.com/gogo/protobuf v1.2.1
 	github.com/hashicorp/go-sockaddr v1.0.0
 	github.com/hashicorp/memberlist v0.1.3
