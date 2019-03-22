@@ -4,7 +4,7 @@ require (
 	github.com/cenkalti/backoff v0.0.0-20181003080854-62661b46c409
 	github.com/cespare/xxhash v0.0.0-20181017004759-096ff4a8a059
 	github.com/go-kit/kit v0.8.0
-	github.com/go-openapi/errors v0.17.2
+	github.com/go-openapi/errors v0.18.0
 	github.com/go-openapi/loads v0.17.2
 	github.com/go-openapi/runtime v0.18.0
 	github.com/go-openapi/spec v0.17.2
