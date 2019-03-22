@@ -28,7 +28,7 @@ require (
 	github.com/satori/go.uuid v0.0.0-20160603004225-b111a074d5ef
 	github.com/shurcooL/httpfs v0.0.0-20171119174359-809beceb2371
 	github.com/shurcooL/vfsgen v0.0.0-20180825020608-02ddb050ef6b
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.3.0
 	github.com/xlab/treeprint v0.0.0-20180616005107-d6fb6747feb6
 	golang.org/x/net v0.0.0-20181201002055-351d144fa1fc
 	golang.org/x/text v0.3.1-0.20180805044716-cb6730876b98 // indirect
