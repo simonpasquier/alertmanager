@@ -21,11 +21,10 @@ import (
 	"net/http"
 
 	"github.com/go-kit/kit/log"
-	//"github.com/go-kit/kit/log/level"
 	commoncfg "github.com/prometheus/common/config"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -85,8 +84,8 @@ type attachment struct {
 func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error) {
 	var err error
 	var (
-		data     = util.GetTemplateData(ctx, n.tmpl, as, n.logger)
-		tmplText = util.TmplText(n.tmpl, data, &err)
+		data     = notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
+		tmplText = notify.TmplText(n.tmpl, data, &err)
 	)
 
 	att := &attachment{
@@ -170,11 +169,11 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	}
 
 	u := n.conf.APIURL.String()
-	resp, err := util.PostJSON(ctx, n.client, u, &buf)
+	resp, err := notify.PostJSON(ctx, n.client, u, &buf)
 	if err != nil {
-		return true, util.RedactURL(err)
+		return true, notify.RedactURL(err)
 	}
-	util.Drain(resp)
+	notify.Drain(resp)
 
 	return n.retry(resp.StatusCode)
 }

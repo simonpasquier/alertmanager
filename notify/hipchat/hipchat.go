@@ -24,7 +24,7 @@ import (
 	commoncfg "github.com/prometheus/common/config"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -64,9 +64,9 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	var err error
 	var msg string
 	var (
-		data     = util.GetTemplateData(ctx, n.tmpl, as, n.logger)
-		tmplText = util.TmplText(n.tmpl, data, &err)
-		tmplHTML = util.TmplHTML(n.tmpl, data, &err)
+		data     = notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
+		tmplText = notify.TmplText(n.tmpl, data, &err)
+		tmplHTML = notify.TmplHTML(n.tmpl, data, &err)
 		roomid   = tmplText(n.conf.RoomID)
 		apiURL   = n.conf.APIURL.Copy()
 	)
@@ -97,11 +97,11 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 		return false, err
 	}
 
-	resp, err := util.PostJSON(ctx, n.client, apiURL.String(), &buf)
+	resp, err := notify.PostJSON(ctx, n.client, apiURL.String(), &buf)
 	if err != nil {
-		return true, util.RedactURL(err)
+		return true, notify.RedactURL(err)
 	}
-	defer util.Drain(resp)
+	defer notify.Drain(resp)
 
 	return n.retry(resp.StatusCode)
 }

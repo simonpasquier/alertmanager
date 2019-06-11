@@ -27,7 +27,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -83,7 +83,7 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	if err != nil {
 		return true, err
 	}
-	defer util.Drain(resp)
+	defer notify.Drain(resp)
 
 	return n.retry(resp.StatusCode)
 }
@@ -102,15 +102,15 @@ func safeSplit(s string, sep string) []string {
 
 // Create requests for a list of alerts.
 func (n *Notifier) createRequest(ctx context.Context, as ...*types.Alert) (*http.Request, bool, error) {
-	key, err := util.ExtractGroupKey(ctx)
+	key, err := notify.ExtractGroupKey(ctx)
 	if err != nil {
 		return nil, false, err
 	}
-	data := util.GetTemplateData(ctx, n.tmpl, as, n.logger)
+	data := notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
 
 	level.Debug(n.logger).Log("incident", key)
 
-	tmpl := util.TmplText(n.tmpl, data, &err)
+	tmpl := notify.TmplText(n.tmpl, data, &err)
 
 	details := make(map[string]string, len(n.conf.Details))
 	for k, v := range n.conf.Details {
@@ -131,7 +131,7 @@ func (n *Notifier) createRequest(ctx context.Context, as ...*types.Alert) (*http
 		apiURL.RawQuery = q.Encode()
 		msg = &opsGenieCloseMessage{Source: tmpl(n.conf.Source)}
 	default:
-		message, truncated := util.Truncate(tmpl(n.conf.Message), 130)
+		message, truncated := notify.Truncate(tmpl(n.conf.Message), 130)
 		if truncated {
 			level.Debug(n.logger).Log("msg", "truncated message", "truncated_message", message, "incident", key)
 		}

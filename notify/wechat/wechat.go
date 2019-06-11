@@ -29,7 +29,7 @@ import (
 	commoncfg "github.com/prometheus/common/config"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -80,15 +80,15 @@ func New(c *config.WechatConfig, t *template.Template, l log.Logger) (*Notifier,
 
 // Notify implements the Notifier interface.
 func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error) {
-	key, err := util.ExtractGroupKey(ctx)
+	key, err := notify.ExtractGroupKey(ctx)
 	if err != nil {
 		return false, err
 	}
 
 	level.Debug(n.logger).Log("incident", key)
-	data := util.GetTemplateData(ctx, n.tmpl, as, n.logger)
+	data := notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
 
-	tmpl := util.TmplText(n.tmpl, data, &err)
+	tmpl := notify.TmplText(n.tmpl, data, &err)
 	if err != nil {
 		return false, err
 	}
@@ -115,9 +115,9 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 
 		resp, err := n.client.Do(req.WithContext(ctx))
 		if err != nil {
-			return true, util.RedactURL(err)
+			return true, notify.RedactURL(err)
 		}
-		defer util.Drain(resp)
+		defer notify.Drain(resp)
 
 		var wechatToken token
 		if err := json.NewDecoder(resp.Body).Decode(&wechatToken); err != nil {
@@ -166,9 +166,9 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 
 	resp, err := n.client.Do(req.WithContext(ctx))
 	if err != nil {
-		return true, util.RedactURL(err)
+		return true, notify.RedactURL(err)
 	}
-	defer util.Drain(resp)
+	defer notify.Drain(resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

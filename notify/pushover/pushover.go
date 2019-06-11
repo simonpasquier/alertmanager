@@ -27,7 +27,6 @@ import (
 
 	"github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/notify"
-	"github.com/prometheus/alertmanager/notify/util"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -62,7 +61,7 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	if !ok {
 		return false, fmt.Errorf("group key missing")
 	}
-	data := util.GetTemplateData(ctx, n.tmpl, as, n.logger)
+	data := notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
 
 	level.Debug(n.logger).Log("incident", key)
 
@@ -70,14 +69,14 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 		err     error
 		message string
 	)
-	tmpl := util.TmplText(n.tmpl, data, &err)
-	tmplHTML := util.TmplHTML(n.tmpl, data, &err)
+	tmpl := notify.TmplText(n.tmpl, data, &err)
+	tmplHTML := notify.TmplHTML(n.tmpl, data, &err)
 
 	parameters := url.Values{}
 	parameters.Add("token", tmpl(string(n.conf.Token)))
 	parameters.Add("user", tmpl(string(n.conf.UserKey)))
 
-	title, truncated := util.Truncate(tmpl(n.conf.Title), 250)
+	title, truncated := notify.Truncate(tmpl(n.conf.Title), 250)
 	if truncated {
 		level.Debug(n.logger).Log("msg", "Truncated title", "truncated_title", title, "incident", key)
 	}
@@ -90,7 +89,7 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 		message = tmpl(n.conf.Message)
 	}
 
-	message, truncated = util.Truncate(message, 1024)
+	message, truncated = notify.Truncate(message, 1024)
 	if truncated {
 		level.Debug(n.logger).Log("msg", "Truncated message", "truncated_message", message, "incident", key)
 	}
@@ -101,7 +100,7 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	}
 	parameters.Add("message", message)
 
-	supplementaryURL, truncated := util.Truncate(tmpl(n.conf.URL), 512)
+	supplementaryURL, truncated := notify.Truncate(tmpl(n.conf.URL), 512)
 	if truncated {
 		level.Debug(n.logger).Log("msg", "Truncated URL", "truncated_url", supplementaryURL, "incident", key)
 	}
@@ -123,11 +122,11 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	u.RawQuery = parameters.Encode()
 	// Don't log the URL as it contains secret data (see #1825).
 	level.Debug(n.logger).Log("msg", "Sending message", "incident", key)
-	resp, err := util.PostText(ctx, n.client, u.String(), nil)
+	resp, err := notify.PostText(ctx, n.client, u.String(), nil)
 	if err != nil {
-		return true, util.RedactURL(err)
+		return true, notify.RedactURL(err)
 	}
-	defer util.Drain(resp)
+	defer notify.Drain(resp)
 
 	return n.retry(resp.StatusCode)
 }

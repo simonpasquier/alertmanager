@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package notify
 
 import (
 	"context"
@@ -25,7 +25,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -102,21 +101,21 @@ func TmplHTML(tmpl *template.Template, data *template.Data, err *error) func(str
 	}
 }
 
-// GroupKey is a string that can be hashed.
-type GroupKey string
+// Key is a string that can be hashed.
+type Key string
 
 // ExtractGroupKey gets the group key from the context.
-func ExtractGroupKey(ctx context.Context) (GroupKey, error) {
-	key, ok := notify.GroupKey(ctx)
+func ExtractGroupKey(ctx context.Context) (Key, error) {
+	key, ok := GroupKey(ctx)
 	if !ok {
 		return "", fmt.Errorf("group key missing")
 	}
-	return GroupKey(key), nil
+	return Key(key), nil
 }
 
 // Hash returns the sha256 for a group key as integrations may have
 // maximum length requirements on deduplication keys.
-func (k GroupKey) Hash() string {
+func (k Key) Hash() string {
 	h := sha256.New()
 	// hash.Hash.Write never returns an error.
 	//nolint: errcheck
@@ -124,17 +123,17 @@ func (k GroupKey) Hash() string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (k GroupKey) String() string {
+func (k Key) String() string {
 	return string(k)
 }
 
 // GetTemplateData creates the template data from the context and the alerts.
 func GetTemplateData(ctx context.Context, tmpl *template.Template, alerts []*types.Alert, l log.Logger) *template.Data {
-	recv, ok := notify.ReceiverName(ctx)
+	recv, ok := ReceiverName(ctx)
 	if !ok {
 		level.Error(l).Log("msg", "Missing receiver")
 	}
-	groupLabels, ok := notify.GroupLabels(ctx)
+	groupLabels, ok := GroupLabels(ctx)
 	if !ok {
 		level.Error(l).Log("msg", "Missing group labels")
 	}

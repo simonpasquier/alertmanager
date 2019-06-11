@@ -34,7 +34,7 @@ import (
 	commoncfg "github.com/prometheus/common/config"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -189,8 +189,8 @@ func (n *Email) Notify(ctx context.Context, as ...*types.Alert) (bool, error) {
 
 	var (
 		tmplErr error
-		data    = util.GetTemplateData(ctx, n.tmpl, as, n.logger)
-		tmpl    = util.TmplText(n.tmpl, data, &tmplErr)
+		data    = notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
+		tmpl    = notify.TmplText(n.tmpl, data, &tmplErr)
 		from    = tmpl(n.conf.From)
 		to      = tmpl(n.conf.To)
 	)

@@ -26,7 +26,7 @@ import (
 	"github.com/prometheus/common/version"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -66,9 +66,9 @@ type Message struct {
 
 // Notify implements the Notifier interface.
 func (n *Notifier) Notify(ctx context.Context, alerts ...*types.Alert) (bool, error) {
-	data := util.GetTemplateData(ctx, n.tmpl, alerts, n.logger)
+	data := notify.GetTemplateData(ctx, n.tmpl, alerts, n.logger)
 
-	groupKey, err := util.ExtractGroupKey(ctx)
+	groupKey, err := notify.ExtractGroupKey(ctx)
 	if err != nil {
 		level.Error(n.logger).Log("err", err)
 	}
@@ -95,7 +95,7 @@ func (n *Notifier) Notify(ctx context.Context, alerts ...*types.Alert) (bool, er
 	if err != nil {
 		return true, err
 	}
-	util.Drain(resp)
+	notify.Drain(resp)
 
 	return n.retry(resp.StatusCode)
 }

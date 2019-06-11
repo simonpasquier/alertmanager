@@ -28,7 +28,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/prometheus/alertmanager/config"
-	"github.com/prometheus/alertmanager/notify/util"
+	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 )
@@ -101,13 +101,13 @@ type pagerDutyPayload struct {
 func (n *Notifier) notifyV1(
 	ctx context.Context,
 	eventType string,
-	key util.GroupKey,
+	key notify.Key,
 	data *template.Data,
 	details map[string]string,
 	as ...*types.Alert,
 ) (bool, error) {
 	var tmplErr error
-	tmpl := util.TmplText(n.tmpl, data, &tmplErr)
+	tmpl := notify.TmplText(n.tmpl, data, &tmplErr)
 
 	msg := &pagerDutyMessage{
 		ServiceKey:  tmpl(string(n.conf.ServiceKey)),
@@ -131,11 +131,11 @@ func (n *Notifier) notifyV1(
 		return false, err
 	}
 
-	resp, err := util.PostJSON(ctx, n.client, n.apiV1, &buf)
+	resp, err := notify.PostJSON(ctx, n.client, n.apiV1, &buf)
 	if err != nil {
 		return true, err
 	}
-	defer util.Drain(resp)
+	defer notify.Drain(resp)
 
 	return n.retryV1(resp)
 }
@@ -143,13 +143,13 @@ func (n *Notifier) notifyV1(
 func (n *Notifier) notifyV2(
 	ctx context.Context,
 	eventType string,
-	key util.GroupKey,
+	key notify.Key,
 	data *template.Data,
 	details map[string]string,
 	as ...*types.Alert,
 ) (bool, error) {
 	var tmplErr error
-	tmpl := util.TmplText(n.tmpl, data, &tmplErr)
+	tmpl := notify.TmplText(n.tmpl, data, &tmplErr)
 
 	if n.conf.Severity == "" {
 		n.conf.Severity = "error"
@@ -200,11 +200,11 @@ func (n *Notifier) notifyV2(
 		return false, fmt.Errorf("failed to encode PagerDuty v2 message: %v", err)
 	}
 
-	resp, err := util.PostJSON(ctx, n.client, n.conf.URL.String(), &buf)
+	resp, err := notify.PostJSON(ctx, n.client, n.conf.URL.String(), &buf)
 	if err != nil {
 		return true, fmt.Errorf("failed to post message to PagerDuty: %v", err)
 	}
-	defer util.Drain(resp)
+	defer notify.Drain(resp)
 
 	return n.retryV2(resp)
 }
@@ -213,14 +213,14 @@ func (n *Notifier) notifyV2(
 //
 // https://v2.developer.pagerduty.com/docs/events-api-v2
 func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error) {
-	key, err := util.ExtractGroupKey(ctx)
+	key, err := notify.ExtractGroupKey(ctx)
 	if err != nil {
 		return false, err
 	}
 
 	var (
 		alerts    = types.Alerts(as...)
-		data      = util.GetTemplateData(ctx, n.tmpl, as, n.logger)
+		data      = notify.GetTemplateData(ctx, n.tmpl, as, n.logger)
 		eventType = pagerDutyEventTrigger
 	)
 	if alerts.Status() == model.AlertResolved {
