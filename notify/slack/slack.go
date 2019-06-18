@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/go-kit/kit/log"
@@ -173,18 +175,24 @@ func (n *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error)
 	if err != nil {
 		return true, notify.RedactURL(err)
 	}
-	notify.Drain(resp)
+	defer notify.Drain(resp)
 
-	return n.retry(resp.StatusCode)
+	return n.retry(resp.StatusCode, resp.Body)
 }
 
-func (n *Notifier) retry(statusCode int) (bool, error) {
+func (n *Notifier) retry(statusCode int, body io.Reader) (bool, error) {
 	// Only 5xx response codes are recoverable and 2xx codes are successful.
 	// https://api.slack.com/incoming-webhooks#handling_errors
 	// https://api.slack.com/changelog/2016-05-17-changes-to-errors-for-incoming-webhooks
-	if statusCode/100 != 2 {
-		return (statusCode/100 == 5), fmt.Errorf("unexpected status code %v", statusCode)
+	if statusCode/100 == 2 {
+		return false, nil
 	}
 
-	return false, nil
+	err := fmt.Errorf("unexpected status code %v", statusCode)
+	if body != nil {
+		if bs, errRead := ioutil.ReadAll(body); errRead == nil {
+			err = fmt.Errorf("%s: %q", err, string(bs))
+		}
+	}
+	return statusCode/100 == 5, err
 }

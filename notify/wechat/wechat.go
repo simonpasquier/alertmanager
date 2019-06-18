@@ -34,7 +34,7 @@ import (
 	"github.com/prometheus/alertmanager/types"
 )
 
-// Notifier implements a Notfier for wechat notifications
+// Notifier implements a Notifier for wechat notifications.
 type Notifier struct {
 	conf   *config.WechatConfig
 	tmpl   *template.Template
@@ -45,6 +45,7 @@ type Notifier struct {
 	accessTokenAt time.Time
 }
 
+// token is the AccessToken with corpid and corpsecret.
 type token struct {
 	AccessToken string `json:"access_token"`
 }

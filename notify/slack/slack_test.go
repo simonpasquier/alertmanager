@@ -14,7 +14,10 @@
 package slack
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"net/http"
 	"testing"
 
 	"github.com/go-kit/kit/log"
@@ -28,8 +31,43 @@ import (
 func TestSlackRetry(t *testing.T) {
 	notifier := new(Notifier)
 	for statusCode, expected := range test.RetryTests(test.DefaultRetryCodes()) {
-		actual, _ := notifier.retry(statusCode)
+		actual, _ := notifier.retry(statusCode, nil)
 		require.Equal(t, expected, actual, fmt.Sprintf("error on status %d", statusCode))
+	}
+}
+
+func TestSlackErr(t *testing.T) {
+	notifier := new(Notifier)
+	for _, tc := range []struct {
+		status   int
+		body     io.Reader
+		expected string
+	}{
+		{
+			status:   http.StatusBadRequest,
+			body:     nil,
+			expected: "unexpected status code 400",
+		},
+		{
+			status:   http.StatusBadRequest,
+			body:     bytes.NewBuffer([]byte("invalid_payload")),
+			expected: "unexpected status code 400: \"invalid_payload\"",
+		},
+		{
+			status:   http.StatusNotFound,
+			body:     bytes.NewBuffer([]byte("channel_not_found")),
+			expected: "unexpected status code 404: \"channel_not_found\"",
+		},
+		{
+			status:   http.StatusInternalServerError,
+			body:     bytes.NewBuffer([]byte("rollup_error")),
+			expected: "unexpected status code 500: \"rollup_error\"",
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			_, err := notifier.retry(tc.status, tc.body)
+			require.Contains(t, err.Error(), tc.expected)
+		})
 	}
 }
 
