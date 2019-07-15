@@ -396,6 +396,7 @@ func init() {
     "alertGroup": {
       "type": "object",
       "required": [
+        "key",
         "labels",
         "receiver",
         "alerts"
@@ -406,6 +407,9 @@ func init() {
           "items": {
             "$ref": "#/definitions/gettableAlert"
           }
+        },
+        "key": {
+          "type": "string"
         },
         "labels": {
           "$ref": "#/definitions/labelSet"
@@ -1205,6 +1209,7 @@ func init() {
     "alertGroup": {
       "type": "object",
       "required": [
+        "key",
         "labels",
         "receiver",
         "alerts"
@@ -1215,6 +1220,9 @@ func init() {
           "items": {
             "$ref": "#/definitions/gettableAlert"
           }
+        },
+        "key": {
+          "type": "string"
         },
         "labels": {
           "$ref": "#/definitions/labelSet"

@@ -467,6 +467,8 @@ definitions:
   alertGroup:
     type: object
     properties:
+      key:
+        type: string
       labels:
         $ref: '#/definitions/labelSet'
       receiver:
@@ -476,6 +478,7 @@ definitions:
         items:
           $ref: '#/definitions/gettableAlert'
     required:
+      - key
       - labels
       - receiver
       - alerts

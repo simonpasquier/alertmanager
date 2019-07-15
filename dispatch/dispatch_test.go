@@ -403,6 +403,7 @@ route:
 
 	require.Equal(t, AlertGroups{
 		&AlertGroup{
+			Key:    `{}:{alertname="OtherAlert"}`,
 			Alerts: []*types.Alert{inputAlerts[0]},
 			Labels: model.LabelSet{
 				model.LabelName("alertname"): model.LabelValue("OtherAlert"),
@@ -410,6 +411,7 @@ route:
 			Receiver: "prod",
 		},
 		&AlertGroup{
+			Key:    `{}/{env="testing"}:{alertname="TestingAlert", service="api"}`,
 			Alerts: []*types.Alert{inputAlerts[1]},
 			Labels: model.LabelSet{
 				model.LabelName("alertname"): model.LabelValue("TestingAlert"),
@@ -418,6 +420,7 @@ route:
 			Receiver: "testing",
 		},
 		&AlertGroup{
+			Key:    `{}/{env="prod"}:{alertname="HighErrorRate", cluster="aa", service="api"}`,
 			Alerts: []*types.Alert{inputAlerts[2], inputAlerts[3]},
 			Labels: model.LabelSet{
 				model.LabelName("alertname"): model.LabelValue("HighErrorRate"),
@@ -427,6 +430,7 @@ route:
 			Receiver: "prod",
 		},
 		&AlertGroup{
+			Key:    `{}/{env="prod"}:{alertname="HighErrorRate", cluster="bb", service="api"}`,
 			Alerts: []*types.Alert{inputAlerts[4]},
 			Labels: model.LabelSet{
 				model.LabelName("alertname"): model.LabelValue("HighErrorRate"),
@@ -436,6 +440,7 @@ route:
 			Receiver: "prod",
 		},
 		&AlertGroup{
+			Key:    `{}/{env="prod"}:{alertname="HighLatency", cluster="bb", service="db"}`,
 			Alerts: []*types.Alert{inputAlerts[5]},
 			Labels: model.LabelSet{
 				model.LabelName("alertname"): model.LabelValue("HighLatency"),
@@ -445,6 +450,7 @@ route:
 			Receiver: "prod",
 		},
 		&AlertGroup{
+			Key:    `{}/{kafka="yes"}:{alertname="HighLatency", cluster="bb", service="db"}`,
 			Alerts: []*types.Alert{inputAlerts[5]},
 			Labels: model.LabelSet{
 				model.LabelName("alertname"): model.LabelValue("HighLatency"),

@@ -380,6 +380,7 @@ func (api *API) getAlertGroupsHandler(params alertgroup_ops.GetAlertGroupsParams
 
 	for _, alertGroup := range alertGroups {
 		ag := &open_api_models.AlertGroup{
+			Key:      &alertGroup.Key,
 			Receiver: &open_api_models.Receiver{Name: &alertGroup.Receiver},
 			Labels:   modelLabelSetToAPILabelSet(alertGroup.Labels),
 			Alerts:   make([]*open_api_models.GettableAlert, 0, len(alertGroup.Alerts)),
@@ -387,10 +388,11 @@ func (api *API) getAlertGroupsHandler(params alertgroup_ops.GetAlertGroupsParams
 
 		for _, alert := range alertGroup.Alerts {
 			fp := alert.Fingerprint()
-			receivers := allReceivers[fp]
-			status := api.getAlertStatus(fp)
-			apiAlert := alertToOpenAPIAlert(alert, status, receivers)
-			ag.Alerts = append(ag.Alerts, apiAlert)
+			ag.Alerts = append(ag.Alerts,
+				alertToOpenAPIAlert(
+					alert,
+					api.getAlertStatus(fp),
+					allReceivers[fp]))
 		}
 		res = append(res, ag)
 	}

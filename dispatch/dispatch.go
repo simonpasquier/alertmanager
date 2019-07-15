@@ -135,25 +135,30 @@ func (d *Dispatcher) run(it provider.AlertIterator) {
 
 // AlertGroup represents how alerts exist within an aggrGroup.
 type AlertGroup struct {
-	Alerts   []*types.Alert
+	Key      string
+	Alerts   types.AlertSlice
 	Labels   model.LabelSet
 	Receiver string
 }
 
 type AlertGroups []*AlertGroup
 
-func (ag AlertGroups) Swap(i, j int)      { ag[i], ag[j] = ag[j], ag[i] }
-func (ag AlertGroups) Less(i, j int) bool { return ag[i].Labels.Before(ag[j].Labels) }
-func (ag AlertGroups) Len() int           { return len(ag) }
+func (ag AlertGroups) Swap(i, j int) { ag[i], ag[j] = ag[j], ag[i] }
+func (ag AlertGroups) Less(i, j int) bool {
+	if ag[i].Labels.Equal(ag[j].Labels) {
+		return ag[i].Key < ag[j].Key
+	}
+	return ag[i].Labels.Before(ag[j].Labels)
+}
+func (ag AlertGroups) Len() int { return len(ag) }
 
 // Groups returns a slice of AlertGroups from the dispatcher's internal state.
 func (d *Dispatcher) Groups(routeFilter func(*Route) bool, alertFilter func(*types.Alert, time.Time) bool) (AlertGroups, map[model.Fingerprint][]string) {
+	now := time.Now()
 	groups := AlertGroups{}
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-
-	seen := map[model.Fingerprint]*AlertGroup{}
 
 	// Keep a list of receivers for an alert to prevent checking each alert
 	// again against all routes. The alert has already matched against this
@@ -167,17 +172,11 @@ func (d *Dispatcher) Groups(routeFilter func(*Route) bool, alertFilter func(*typ
 
 		for _, ag := range ags {
 			receiver := route.RouteOpts.Receiver
-			alertGroup, ok := seen[ag.fingerprint()]
-			if !ok {
-				alertGroup = &AlertGroup{
-					Labels:   ag.labels,
-					Receiver: receiver,
-				}
-
-				seen[ag.fingerprint()] = alertGroup
+			alertGroup := &AlertGroup{
+				Key:      ag.GroupKey(),
+				Labels:   ag.labels,
+				Receiver: receiver,
 			}
-
-			now := time.Now()
 
 			alerts := ag.alerts.List()
 			filteredAlerts := make([]*types.Alert, 0, len(alerts))
@@ -209,6 +208,12 @@ func (d *Dispatcher) Groups(routeFilter func(*Route) bool, alertFilter func(*typ
 	}
 
 	sort.Sort(groups)
+	for i := range groups {
+		sort.Sort(groups[i].Alerts)
+	}
+	for i := range receivers {
+		sort.Strings(receivers[i])
+	}
 
 	return groups, receivers
 }
