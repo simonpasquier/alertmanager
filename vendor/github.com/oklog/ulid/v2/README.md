@@ -1,6 +1,6 @@
 # Universally Unique Lexicographically Sortable Identifier
 
-![Project status](https://img.shields.io/badge/version-0.3.0-yellow.svg)
+![Project status](https://img.shields.io/badge/version-1.3.0-yellow.svg)
 [![Build Status](https://secure.travis-ci.org/oklog/ulid.png)](http://travis-ci.org/oklog/ulid)
 [![Go Report Card](https://goreportcard.com/badge/oklog/ulid?cache=0)](https://goreportcard.com/report/oklog/ulid)
 [![Coverage Status](https://coveralls.io/repos/github/oklog/ulid/badge.svg?branch=master&cache=0)](https://coveralls.io/github/oklog/ulid?branch=master)
@@ -27,6 +27,7 @@ A ULID however:
 - Uses Crockford's base32 for better efficiency and readability (5 bits per character)
 - Case insensitive
 - No special characters (URL safe)
+- Monotonic sort order (correctly detects and handles the same millisecond)
 
 ## Install
 
@@ -45,11 +46,44 @@ Instantiate one per long living go-routine or use a `sync.Pool` if you want to a
 ```go
 func ExampleULID() {
 	t := time.Unix(1000000, 0)
-	entropy := rand.New(rand.NewSource(t.UnixNano()))
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
 	fmt.Println(ulid.MustNew(ulid.Timestamp(t), entropy))
 	// Output: 0000XSNJG0MQJHBF4QX1EFD6Y3
 }
+```
 
+## Commandline tool
+
+This repo also provides a tool to generate and parse ULIDs at the command line.
+
+Installation:
+
+```shell
+go get github.com/oklog/ulid/cmd/ulid
+```
+
+Usage:
+
+```shell
+Usage: ulid [-hlqz] [-f <format>] [parameters ...]
+ -f, --format=<format>  when parsing, show times in this format: default, rfc3339, unix, ms
+ -h, --help             print this help text
+ -l, --local            when parsing, show local time instead of UTC
+ -q, --quick            when generating, use non-crypto-grade entropy
+ -z, --zero             when generating, fix entropy to all-zeroes
+```
+
+Examples:
+
+```shell
+$ ulid
+01D78XYFJ1PRM1WPBCBT3VHMNV
+$ ulid -z
+01D78XZ44G0000000000000000
+$ ulid 01D78XZ44G0000000000000000
+Sun Mar 31 03:51:23.536 UTC 2019
+$ ulid --format=rfc3339 --local 01D78XZ44G0000000000000000
+2019-03-30T20:51:23.536PDT
 ```
 
 ## Specification
@@ -66,6 +100,7 @@ Below is the current specification of ULID as implemented in this repository.
 **Entropy**
 - 80 bits
 - User defined entropy source.
+- Monotonicity within the same millisecond with [`ulid.Monotonic`](https://godoc.org/github.com/oklog/ulid#Monotonic)
 
 ### Encoding
 
