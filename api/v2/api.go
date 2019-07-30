@@ -134,12 +134,12 @@ func NewAPI(
 }
 
 // Update sets the API struct members that may change between reloads of alertmanager.
-func (api *API) Update(cfg *config.Config, setAlertStatus setAlertStatusFn) {
+func (api *API) Update(cfg *config.Config, route *dispatch.Route, setAlertStatus setAlertStatusFn) {
 	api.mtx.Lock()
 	defer api.mtx.Unlock()
 
 	api.alertmanagerConfig = cfg
-	api.route = dispatch.NewRoute(cfg.Route, nil)
+	api.route = route
 	api.setAlertStatus = setAlertStatus
 }
 

@@ -396,12 +396,15 @@ func run() int {
 			peer,
 		)
 
-		api.Update(conf, func(labels model.LabelSet) {
+		route, err := dispatch.NewRoute(conf.Route, nil)
+		if err != nil {
+			return err
+		}
+		api.Update(conf, route, func(labels model.LabelSet) {
 			inhibitor.Mutes(labels)
 			silencer.Mutes(labels)
 		})
-
-		disp = dispatch.NewDispatcher(alerts, dispatch.NewRoute(conf.Route, nil), pipeline, marker, timeoutFunc, logger)
+		disp = dispatch.NewDispatcher(alerts, route, pipeline, marker, timeoutFunc, logger)
 
 		go disp.Run()
 		go inhibitor.Run()

@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	"github.com/prometheus/alertmanager/config"
@@ -55,7 +56,7 @@ type Route struct {
 }
 
 // NewRoute returns a new route.
-func NewRoute(cr *config.Route, parent *Route) *Route {
+func NewRoute(cr *config.Route, parent *Route) (*Route, error) {
 	// Create default and overwrite with configured settings.
 	opts := DefaultRouteOpts
 	if parent != nil {
@@ -101,19 +102,34 @@ func NewRoute(cr *config.Route, parent *Route) *Route {
 		Matchers:  matchers,
 		Continue:  cr.Continue,
 	}
+	if opts.GroupInterval > opts.RepeatInterval {
+		return nil, errors.Errorf(
+			"%q: group_interval '%s' has to be less than or equal to repeat_interval '%s'",
+			route.Key(),
+			route.RouteOpts.GroupInterval,
+			route.RouteOpts.RepeatInterval)
+	}
 
-	route.Routes = NewRoutes(cr.Routes, route)
+	children, err := NewRoutes(cr.Routes, route)
+	if err != nil {
+		return nil, err
+	}
+	route.Routes = children
 
-	return route
+	return route, nil
 }
 
 // NewRoutes returns a slice of routes.
-func NewRoutes(croutes []*config.Route, parent *Route) []*Route {
+func NewRoutes(croutes []*config.Route, parent *Route) ([]*Route, error) {
 	res := []*Route{}
 	for _, cr := range croutes {
-		res = append(res, NewRoute(cr, parent))
+		route, err := NewRoute(cr, parent)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, route)
 	}
-	return res
+	return res, nil
 }
 
 // Match does a depth-first left-to-right search through the route tree

@@ -138,7 +138,7 @@ func TestAddAlerts(t *testing.T) {
 		api.Update(&config.Config{
 			Global: &defaultGlobalConfig,
 			Route:  &route,
-		})
+		}, &dispatch.Route{})
 
 		r, err := http.NewRequest("POST", "/api/v1/alerts", bytes.NewReader(b))
 		w := httptest.NewRecorder()
@@ -266,7 +266,11 @@ func TestListAlerts(t *testing.T) {
 	} {
 		alertsProvider := newFakeAlerts(alerts, tc.err)
 		api := New(alertsProvider, nil, newGetAlertStatus(alertsProvider), nil, nil, nil)
-		api.route = dispatch.NewRoute(&config.Route{Receiver: "def-receiver"}, nil)
+		route, err := dispatch.NewRoute(&config.Route{Receiver: "def-receiver"}, nil)
+		if err != nil {
+			t.Fatalf("Unexpected error %v", err)
+		}
+		api.Update(&config.Config{}, route)
 
 		r, err := http.NewRequest("GET", "/api/v1/alerts", nil)
 		if err != nil {

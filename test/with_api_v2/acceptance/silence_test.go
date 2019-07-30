@@ -30,7 +30,7 @@ route:
   group_by: []
   group_wait:      1s
   group_interval:  1s
-  repeat_interval: 1ms
+  repeat_interval: 1s
 
 receivers:
 - name: "default"
@@ -47,8 +47,8 @@ receivers:
 
 	amc := at.AlertmanagerCluster(fmt.Sprintf(conf, wh.Address()), 1)
 
-	// No repeat interval is configured. Thus, we receive an alert
-	// notification every second.
+	// Given repeat_interval=1s, we expect to receive an alert notification
+	// every second.
 	amc.Push(At(1), Alert("alertname", "test1").Active(1))
 	amc.Push(At(1), Alert("alertname", "test2").Active(1))
 
@@ -58,14 +58,14 @@ receivers:
 	)
 
 	// Add a silence that affects the first alert.
-	amc.SetSilence(At(2.3), Silence(2.5, 4.5).Match("alertname", "test1"))
+	amc.SetSilence(At(2.3), Silence(2.5, 6.5).Match("alertname", "test1"))
 
-	co.Want(Between(3, 3.5), Alert("alertname", "test2").Active(1))
 	co.Want(Between(4, 4.5), Alert("alertname", "test2").Active(1))
+	co.Want(Between(6, 6.5), Alert("alertname", "test2").Active(1))
 
 	// Silence should be over now and we receive both alerts again.
 
-	co.Want(Between(5, 5.5),
+	co.Want(Between(7, 7.5),
 		Alert("alertname", "test1").Active(1),
 		Alert("alertname", "test2").Active(1),
 	)
@@ -84,7 +84,6 @@ route:
   group_by: []
   group_wait:      1s
   group_interval:  1s
-  repeat_interval: 1ms
 
 receivers:
 - name: "default"

@@ -35,7 +35,7 @@ route:
   group_by: [alertname]
   group_wait:      1s
   group_interval:  1s
-  repeat_interval: 1ms
+  repeat_interval: 1s
 
 receivers:
 - name: "default"
@@ -61,30 +61,30 @@ receivers:
 
 	co.Want(Between(2, 2.5), Alert("alertname", "test").Active(1))
 
-	am.Push(At(2.1), Alert("alertname", "test").Annotate("ann", "v1").Active(2))
+	am.Push(At(2.6), Alert("alertname", "test").Annotate("ann", "v1").Active(2))
 
-	co.Want(Between(3, 3.5), Alert("alertname", "test").Annotate("ann", "v1").Active(1))
+	co.Want(Between(4, 4.5), Alert("alertname", "test").Annotate("ann", "v1").Active(1))
 
 	// Annotations are always overwritten by the alert that arrived most recently.
-	am.Push(At(3.6), Alert("alertname", "test").Annotate("ann", "v2").Active(1.5))
+	am.Push(At(4.6), Alert("alertname", "test").Annotate("ann", "v2").Active(1.5))
 
-	co.Want(Between(4, 4.5), Alert("alertname", "test").Annotate("ann", "v2").Active(1))
+	co.Want(Between(6, 6.5), Alert("alertname", "test").Annotate("ann", "v2").Active(1))
 
 	// If an alert is marked resolved twice, the latest point in time must be
 	// set as the eventual resolve time.
-	am.Push(At(4.6), Alert("alertname", "test").Annotate("ann", "v2").Active(3, 4.5))
-	am.Push(At(4.8), Alert("alertname", "test").Annotate("ann", "v3").Active(2.9, 4.8))
-	am.Push(At(4.8), Alert("alertname", "test").Annotate("ann", "v3").Active(2.9, 4.1))
+	am.Push(At(6.6), Alert("alertname", "test").Annotate("ann", "v2").Active(3, 4.5))
+	am.Push(At(6.8), Alert("alertname", "test").Annotate("ann", "v3").Active(2.9, 4.8))
+	am.Push(At(6.8), Alert("alertname", "test").Annotate("ann", "v3").Active(2.9, 4.1))
 
-	co.Want(Between(5, 5.5), Alert("alertname", "test").Annotate("ann", "v3").Active(1, 4.8))
+	co.Want(Between(7, 7.5), Alert("alertname", "test").Annotate("ann", "v3").Active(1, 4.8))
 
 	// Reactivate an alert after a previous occurrence has been resolved.
 	// No overlap, no merge must occur.
-	am.Push(At(5.3), Alert("alertname", "test"))
+	am.Push(At(7.3), Alert("alertname", "test"))
 
-	co.Want(Between(6, 6.5), Alert("alertname", "test").Active(5.3))
+	co.Want(Between(8, 8.5), Alert("alertname", "test").Active(7.3))
 
-	// Test against a bug which ocurrec after a restart. The previous occurrence of
+	// Test against a bug which ocurred after a restart. The previous occurrence of
 	// the alert was sent rather than the most recent one.
 	//
 	// XXX(fabxc) disabled as notification info won't be persisted. Thus, with a mesh
@@ -110,8 +110,8 @@ route:
   receiver: "default"
   group_by: [alertname]
   group_wait:      1s
-  group_interval:  1s
-  repeat_interval: 1ms
+  group_interval:  100ms
+  repeat_interval: 1s
 
 receivers:
 - name: "default"
@@ -145,7 +145,7 @@ receivers:
 	//	am.Terminate()
 	//	am.Start()
 	// })
-	am.Push(At(3.5), Alert("alertname", "test").Active(1, 3))
+	am.Push(At(4), Alert("alertname", "test").Active(1, 3))
 
 	// Declare which alerts are expected to arrive at the collector within
 	// the defined time intervals.

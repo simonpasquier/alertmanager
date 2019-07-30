@@ -38,7 +38,6 @@ route:
   group_by: []
   group_wait:      1s
   group_interval:  10m
-  repeat_interval: 1h
 
 inhibit_rules:
   - source_match:

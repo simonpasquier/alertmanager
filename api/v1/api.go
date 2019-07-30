@@ -133,12 +133,12 @@ func (api *API) Register(r *route.Router) {
 }
 
 // Update sets the configuration string to a new value.
-func (api *API) Update(cfg *config.Config) {
+func (api *API) Update(cfg *config.Config, route *dispatch.Route) {
 	api.mtx.Lock()
 	defer api.mtx.Unlock()
 
 	api.config = cfg
-	api.route = dispatch.NewRoute(cfg.Route, nil)
+	api.route = route
 }
 
 type errorType string

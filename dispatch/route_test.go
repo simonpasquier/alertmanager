@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/alertmanager/config"
@@ -85,10 +86,9 @@ routes:
 	if err := yaml.UnmarshalStrict([]byte(in), &ctree); err != nil {
 		t.Fatal(err)
 	}
-	var (
-		def  = DefaultRouteOpts
-		tree = NewRoute(&ctree, nil)
-	)
+	def := DefaultRouteOpts
+	tree, err := NewRoute(&ctree, nil)
+	require.NoError(t, err)
 	lset := func(labels ...string) map[model.LabelName]struct{} {
 		s := map[model.LabelName]struct{}{}
 		for _, ls := range labels {
@@ -265,5 +265,68 @@ routes:
 		if !reflect.DeepEqual(keys, test.keys) {
 			t.Errorf("\nexpected:\n%v\ngot:\n%v", test.keys, keys)
 		}
+	}
+}
+
+func TestNewRoute(t *testing.T) {
+	for _, tc := range []struct {
+		routeConf string
+		err       bool
+	}{
+		{
+			routeConf: `
+group_wait: 10s
+group_interval: 10s
+repeat_interval: 15s`,
+		},
+		{
+			routeConf: `
+group_wait: 10s
+group_interval: 10s
+repeat_interval: 15s
+routes:
+- repeat_interval: 12s`,
+		},
+		{
+			routeConf: `
+group_wait: 10s
+group_interval: 10s
+repeat_interval: 5s`,
+			err: true,
+		},
+		{
+			routeConf: `
+group_wait: 10s
+group_interval: 10s
+repeat_interval: 15s
+routes:
+- repeat_interval: 5s
+  match: {foo: bar}`,
+			err: true,
+		},
+		{
+			routeConf: `
+group_wait: 10s
+group_interval: 10s
+repeat_interval: 15s
+routes:
+- group_interval: 20s
+  match: {foo: bar}`,
+			err: true,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			var routeConf config.Route
+			err := yaml.Unmarshal([]byte(tc.routeConf), &routeConf)
+			require.NoError(t, err)
+
+			_, err = NewRoute(&routeConf, nil)
+			if tc.err {
+				t.Logf("%s", err)
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
 	}
 }

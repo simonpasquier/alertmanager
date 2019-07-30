@@ -67,7 +67,11 @@ func (c *routingShow) routingShowAction(ctx context.Context, _ *kingpin.ParseCon
 		kingpin.Fatalf("%s", err)
 		return err
 	}
-	route := dispatch.NewRoute(cfg.Route, nil)
+	route, err := dispatch.NewRoute(cfg.Route, nil)
+	if err != nil {
+		kingpin.Fatalf("%s", err)
+		return err
+	}
 	tree := treeprint.New()
 	convertRouteToTree(route, tree)
 	fmt.Println("Routing tree:")

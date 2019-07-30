@@ -50,7 +50,6 @@ route:
   group_by: [alertname]
   group_wait:      1s
   group_interval:  1s
-  repeat_interval: 1ms
 
 receivers:
 - name: "default"
@@ -87,7 +86,6 @@ route:
   group_by: [alertname]
   group_wait:      1s
   group_interval:  1s
-  repeat_interval: 1ms
 
 receivers:
 - name: "default"
@@ -131,7 +129,6 @@ route:
   group_by: [alertname]
   group_wait:      1s
   group_interval:  1s
-  repeat_interval: 1ms
 
 receivers:
 - name: "default"

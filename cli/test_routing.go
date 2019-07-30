@@ -76,7 +76,10 @@ func (c *routingShow) routingTestAction(ctx context.Context, _ *kingpin.ParseCon
 		return err
 	}
 
-	mainRoute := dispatch.NewRoute(cfg.Route, nil)
+	mainRoute, err := dispatch.NewRoute(cfg.Route, nil)
+	if err != nil {
+		kingpin.Fatalf("Failed to create routing tree: %v\n", err)
+	}
 
 	// Parse labels to LabelSet.
 	ls, err := parseLabels(c.labels)

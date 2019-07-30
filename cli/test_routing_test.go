@@ -54,7 +54,10 @@ func TestRoutingTest(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to load test configuration: %v", err)
 		}
-		mainRoute := dispatch.NewRoute(cfg.Route, nil)
+		mainRoute, err := dispatch.NewRoute(cfg.Route, nil)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
 		err = checkResolvedReceivers(mainRoute, test.alert, test.expectedReceivers)
 		if err != nil {
 			t.Fatalf("%v", err)
