@@ -59,3 +59,6 @@ clean:
 		api/v2/models api/v2/restapi api/v2/client \
 		openapi/client openapi/models
 	- @cd $(FRONTEND_DIR) && $(MAKE) clean
+
+unused: common-unused
+	make -C openapi unused
