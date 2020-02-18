@@ -1,3 +1,33 @@
+## 0.21.0-rc.0 / 2020-02-18
+
+* [CHANGE] [#2160] Removed default assignment of env vars. #2161
+* [ENHANCEMENT] Add slack channel when logging error. #2177
+* [ENHANCEMENT] [Minor][one line change] Fix an error message about start and end time validation. EOM. #2173
+* [BUGFIX] Inherit their parent route's grouping when "group_by: [...]". #2154
+<!-- Unclassified pull requests:
+* [] .circleci/config.yml: publish_release requires test_frontend. #2139
+* [] Merge release 0.20. #2140
+* [] move walkRoute to dispatch package. #2136
+* [] MAINTAINERS.md: Remove Max Inden (mxinden). #2153
+* [] Spelling. #2167
+* [] remove stuart from MAINTAINERS.md. #2181
+* [] api/v2: Fix silence creation error message. #2179
+* [] Mark pull request as stale after 60d of inactivity. #2185 -->
+
+<!--
+Contributors:
+
+* @OGKevin
+* @celian-garcia
+* @johncming
+* @jsoref
+* @melchiormoulin
+* @mxinden
+* @roidelapluie
+* @shokada
+* @simonpasquier
+* @stuartnelson3
+-->
 ## 0.20.0 / 2019-12-11
 
 * [CHANGE] Check that at least one silence matcher matches a non-empty string. #2081
