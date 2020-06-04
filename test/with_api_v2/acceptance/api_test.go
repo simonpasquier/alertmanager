@@ -80,7 +80,7 @@ receivers:
 		Alert:    models.Alert{Labels: labels},
 	}
 	alertParams := alert.NewPostAlertsParams()
-	alertParams.Alerts = models.PostableAlerts{pa}
+	alertParams.Alerts = []*models.PostableAlert{pa}
 	_, err := am.Client().Alert.PostAlerts(alertParams)
 	require.NoError(t, err)
 
@@ -108,7 +108,7 @@ receivers:
 			EndsAt:    &endsAt,
 			Comment:   &cm,
 			CreatedBy: &cm,
-			Matchers: models.Matchers{
+			Matchers: []*models.Matcher{
 				&models.Matcher{Name: &labelName, Value: &labelValue, IsRegex: &isRegex},
 			},
 		},
@@ -219,7 +219,7 @@ receivers:
 		Alert:    models.Alert{Labels: labels},
 	}
 	alertParams := alert.NewPostAlertsParams()
-	alertParams.Alerts = models.PostableAlerts{pa1, pa2}
+	alertParams.Alerts = []*models.PostableAlert{pa1, pa2}
 	_, err := am.Client().Alert.PostAlerts(alertParams)
 	require.NoError(t, err)
 

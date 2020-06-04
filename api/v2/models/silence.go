@@ -20,6 +20,8 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"strconv"
+
 	strfmt "github.com/go-openapi/strfmt"
 
 	"github.com/go-openapi/errors"
@@ -46,7 +48,8 @@ type Silence struct {
 
 	// matchers
 	// Required: true
-	Matchers Matchers `json:"matchers"`
+	// Min Items: 1
+	Matchers []*Matcher `json:"matchers"`
 
 	// starts at
 	// Required: true
@@ -121,11 +124,26 @@ func (m *Silence) validateMatchers(formats strfmt.Registry) error {
 		return err
 	}
 
-	if err := m.Matchers.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("matchers")
-		}
+	iMatchersSize := int64(len(m.Matchers))
+
+	if err := validate.MinItems("matchers", "body", iMatchersSize, 1); err != nil {
 		return err
+	}
+
+	for i := 0; i < len(m.Matchers); i++ {
+		if swag.IsZero(m.Matchers[i]) { // not required
+			continue
+		}
+
+		if m.Matchers[i] != nil {
+			if err := m.Matchers[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("matchers" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil

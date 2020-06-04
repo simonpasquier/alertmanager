@@ -81,7 +81,7 @@ type PostAlertsParams struct {
 	  The alerts to create
 
 	*/
-	Alerts models.PostableAlerts
+	Alerts []*models.PostableAlert
 
 	timeout    time.Duration
 	Context    context.Context
@@ -122,13 +122,13 @@ func (o *PostAlertsParams) SetHTTPClient(client *http.Client) {
 }
 
 // WithAlerts adds the alerts to the post alerts params
-func (o *PostAlertsParams) WithAlerts(alerts models.PostableAlerts) *PostAlertsParams {
+func (o *PostAlertsParams) WithAlerts(alerts []*models.PostableAlert) *PostAlertsParams {
 	o.SetAlerts(alerts)
 	return o
 }
 
 // SetAlerts adds the alerts to the post alerts params
-func (o *PostAlertsParams) SetAlerts(alerts models.PostableAlerts) {
+func (o *PostAlertsParams) SetAlerts(alerts []*models.PostableAlert) {
 	o.Alerts = alerts
 }
 

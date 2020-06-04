@@ -66,14 +66,14 @@ func NewGetSilencesOK() *GetSilencesOK {
 Get silences response
 */
 type GetSilencesOK struct {
-	Payload models.GettableSilences
+	Payload []*models.GettableSilence
 }
 
 func (o *GetSilencesOK) Error() string {
 	return fmt.Sprintf("[GET /silences][%d] getSilencesOK  %+v", 200, o.Payload)
 }
 
-func (o *GetSilencesOK) GetPayload() models.GettableSilences {
+func (o *GetSilencesOK) GetPayload() []*models.GettableSilence {
 	return o.Payload
 }
 

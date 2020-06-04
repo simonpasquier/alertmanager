@@ -158,8 +158,8 @@ func (t *AcceptanceTest) Collector(name string) *Collector {
 		t:         t.T,
 		name:      name,
 		opts:      t.opts,
-		collected: map[float64][]models.GettableAlerts{},
-		expected:  map[Interval][]models.GettableAlerts{},
+		collected: map[float64][][]*models.GettableAlert{},
+		expected:  map[Interval][][]*models.GettableAlert{},
 	}
 	t.collectors = append(t.collectors, co)
 
@@ -421,7 +421,7 @@ func (amc *AlertmanagerCluster) Push(at float64, alerts ...*TestAlert) {
 // Push declares alerts that are to be pushed to the Alertmanager
 // server at a relative point in time.
 func (am *Alertmanager) Push(at float64, alerts ...*TestAlert) {
-	var cas models.PostableAlerts
+	var cas []*models.PostableAlert
 	for i := range alerts {
 		a := alerts[i].nativeAlert(am.opts)
 		alert := &models.PostableAlert{

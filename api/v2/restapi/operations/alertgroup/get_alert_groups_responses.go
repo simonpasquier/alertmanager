@@ -39,7 +39,7 @@ type GetAlertGroupsOK struct {
 	/*
 	  In: Body
 	*/
-	Payload models.AlertGroups `json:"body,omitempty"`
+	Payload []*models.AlertGroup `json:"body,omitempty"`
 }
 
 // NewGetAlertGroupsOK creates GetAlertGroupsOK with default headers values
@@ -49,13 +49,13 @@ func NewGetAlertGroupsOK() *GetAlertGroupsOK {
 }
 
 // WithPayload adds the payload to the get alert groups o k response
-func (o *GetAlertGroupsOK) WithPayload(payload models.AlertGroups) *GetAlertGroupsOK {
+func (o *GetAlertGroupsOK) WithPayload(payload []*models.AlertGroup) *GetAlertGroupsOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the get alert groups o k response
-func (o *GetAlertGroupsOK) SetPayload(payload models.AlertGroups) {
+func (o *GetAlertGroupsOK) SetPayload(payload []*models.AlertGroup) {
 	o.Payload = payload
 }
 
@@ -66,7 +66,7 @@ func (o *GetAlertGroupsOK) WriteResponse(rw http.ResponseWriter, producer runtim
 	payload := o.Payload
 	if payload == nil {
 		// return empty array
-		payload = models.AlertGroups{}
+		payload = make([]*models.AlertGroup, 0, 50)
 	}
 
 	if err := producer.Produce(rw, payload); err != nil {

@@ -216,7 +216,7 @@ func (api *API) getAlertsHandler(params alert_ops.GetAlertsParams) middleware.Re
 		receiverFilter *regexp.Regexp
 		// Initialize result slice to prevent api returning `null` when there
 		// are no alerts present
-		res = open_api_models.GettableAlerts{}
+		res = []*open_api_models.GettableAlert{}
 		ctx = params.HTTPRequest.Context()
 
 		logger = api.requestLogger(params.HTTPRequest)
@@ -383,7 +383,7 @@ func (api *API) getAlertGroupsHandler(params alertgroup_ops.GetAlertGroupsParams
 	af := api.alertFilter(matchers, *params.Silenced, *params.Inhibited, *params.Active)
 	alertGroups, allReceivers := api.alertGroups(rf, af)
 
-	res := make(open_api_models.AlertGroups, 0, len(alertGroups))
+	res := make([]*open_api_models.AlertGroup, 0, len(alertGroups))
 
 	for _, alertGroup := range alertGroups {
 		ag := &open_api_models.AlertGroup{
@@ -474,7 +474,7 @@ func alertToOpenAPIAlert(alert *types.Alert, status types.AlertStatus, receivers
 	return aa
 }
 
-func openAPIAlertsToAlerts(apiAlerts open_api_models.PostableAlerts) []*types.Alert {
+func openAPIAlertsToAlerts(apiAlerts []*open_api_models.PostableAlert) []*types.Alert {
 	alerts := []*types.Alert{}
 	for _, apiAlert := range apiAlerts {
 		alert := types.Alert{
@@ -582,7 +582,7 @@ func (api *API) getSilencesHandler(params silence_ops.GetSilencesParams) middlew
 		return silence_ops.NewGetSilencesInternalServerError().WithPayload(err.Error())
 	}
 
-	sils := open_api_models.GettableSilences{}
+	sils := make([]*open_api_models.GettableSilence, 0, len(psils))
 	for _, ps := range psils {
 		silence, err := gettableSilenceFromProto(ps)
 		if err != nil {
@@ -613,7 +613,7 @@ var (
 // active silences should show the next to expire first
 // pending silences are ordered based on which one starts next
 // expired are ordered based on which one expired most recently
-func sortSilences(sils open_api_models.GettableSilences) {
+func sortSilences(sils []*open_api_models.GettableSilence) {
 	sort.Slice(sils, func(i, j int) bool {
 		state1 := types.SilenceState(*sils[i].Status.State)
 		state2 := types.SilenceState(*sils[j].Status.State)

@@ -128,7 +128,7 @@ func extendedFormatAnnotations(labels models.LabelSet) string {
 	return strings.Join(output, " ")
 }
 
-func extendedFormatMatchers(matchers models.Matchers) string {
+func extendedFormatMatchers(matchers []*models.Matcher) string {
 	output := []string{}
 	for _, matcher := range matchers {
 		output = append(output, extendedFormatMatcher(*matcher))

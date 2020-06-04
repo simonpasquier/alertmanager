@@ -85,7 +85,7 @@ func (formatter *SimpleFormatter) FormatClusterStatus(status *models.ClusterStat
 	return w.Flush()
 }
 
-func simpleFormatMatchers(matchers models.Matchers) string {
+func simpleFormatMatchers(matchers []*models.Matcher) string {
 	output := []string{}
 	for _, matcher := range matchers {
 		output = append(output, simpleFormatMatcher(*matcher))

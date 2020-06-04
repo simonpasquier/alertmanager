@@ -106,7 +106,10 @@ func init() {
           "200": {
             "description": "Get alerts response",
             "schema": {
-              "$ref": "#/definitions/gettableAlerts"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gettableAlert"
+              }
             }
           },
           "400": {
@@ -130,7 +133,10 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/postableAlerts"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postableAlert"
+              }
             }
           }
         ],
@@ -197,7 +203,10 @@ func init() {
           "200": {
             "description": "Get alert groups response",
             "schema": {
-              "$ref": "#/definitions/alertGroups"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/alertGroup"
+              }
             }
           },
           "400": {
@@ -310,7 +319,10 @@ func init() {
           "200": {
             "description": "Get silences response",
             "schema": {
-              "$ref": "#/definitions/gettableSilences"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gettableSilence"
+              }
             }
           },
           "500": {
@@ -413,12 +425,6 @@ func init() {
         "receiver": {
           "$ref": "#/definitions/receiver"
         }
-      }
-    },
-    "alertGroups": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/alertGroup"
       }
     },
     "alertStatus": {
@@ -559,12 +565,6 @@ func init() {
         }
       ]
     },
-    "gettableAlerts": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/gettableAlert"
-      }
-    },
     "gettableSilence": {
       "allOf": [
         {
@@ -592,12 +592,6 @@ func init() {
         }
       ]
     },
-    "gettableSilences": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/gettableSilence"
-      }
-    },
     "labelSet": {
       "type": "object",
       "additionalProperties": {
@@ -621,13 +615,6 @@ func init() {
         "value": {
           "type": "string"
         }
-      }
-    },
-    "matchers": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/definitions/matcher"
       }
     },
     "peerStatus": {
@@ -667,12 +654,6 @@ func init() {
           "$ref": "#/definitions/alert"
         }
       ]
-    },
-    "postableAlerts": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/postableAlert"
-      }
     },
     "postableSilence": {
       "allOf": [
@@ -721,7 +702,11 @@ func init() {
           "format": "date-time"
         },
         "matchers": {
-          "$ref": "#/definitions/matchers"
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/matcher"
+          }
         },
         "startsAt": {
           "type": "string",
@@ -885,7 +870,10 @@ func init() {
           "200": {
             "description": "Get alerts response",
             "schema": {
-              "$ref": "#/definitions/gettableAlerts"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gettableAlert"
+              }
             }
           },
           "400": {
@@ -915,7 +903,10 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/postableAlerts"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/postableAlert"
+              }
             }
           }
         ],
@@ -988,7 +979,10 @@ func init() {
           "200": {
             "description": "Get alert groups response",
             "schema": {
-              "$ref": "#/definitions/alertGroups"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/alertGroup"
+              }
             }
           },
           "400": {
@@ -1113,7 +1107,10 @@ func init() {
           "200": {
             "description": "Get silences response",
             "schema": {
-              "$ref": "#/definitions/gettableSilences"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gettableSilence"
+              }
             }
           },
           "500": {
@@ -1222,12 +1219,6 @@ func init() {
         "receiver": {
           "$ref": "#/definitions/receiver"
         }
-      }
-    },
-    "alertGroups": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/alertGroup"
       }
     },
     "alertStatus": {
@@ -1368,12 +1359,6 @@ func init() {
         }
       ]
     },
-    "gettableAlerts": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/gettableAlert"
-      }
-    },
     "gettableSilence": {
       "allOf": [
         {
@@ -1401,12 +1386,6 @@ func init() {
         }
       ]
     },
-    "gettableSilences": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/gettableSilence"
-      }
-    },
     "labelSet": {
       "type": "object",
       "additionalProperties": {
@@ -1430,13 +1409,6 @@ func init() {
         "value": {
           "type": "string"
         }
-      }
-    },
-    "matchers": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/definitions/matcher"
       }
     },
     "peerStatus": {
@@ -1476,12 +1448,6 @@ func init() {
           "$ref": "#/definitions/alert"
         }
       ]
-    },
-    "postableAlerts": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/postableAlert"
-      }
     },
     "postableSilence": {
       "allOf": [
@@ -1530,7 +1496,11 @@ func init() {
           "format": "date-time"
         },
         "matchers": {
-          "$ref": "#/definitions/matchers"
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/matcher"
+          }
         },
         "startsAt": {
           "type": "string",

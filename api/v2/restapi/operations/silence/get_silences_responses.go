@@ -39,7 +39,7 @@ type GetSilencesOK struct {
 	/*
 	  In: Body
 	*/
-	Payload models.GettableSilences `json:"body,omitempty"`
+	Payload []*models.GettableSilence `json:"body,omitempty"`
 }
 
 // NewGetSilencesOK creates GetSilencesOK with default headers values
@@ -49,13 +49,13 @@ func NewGetSilencesOK() *GetSilencesOK {
 }
 
 // WithPayload adds the payload to the get silences o k response
-func (o *GetSilencesOK) WithPayload(payload models.GettableSilences) *GetSilencesOK {
+func (o *GetSilencesOK) WithPayload(payload []*models.GettableSilence) *GetSilencesOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the get silences o k response
-func (o *GetSilencesOK) SetPayload(payload models.GettableSilences) {
+func (o *GetSilencesOK) SetPayload(payload []*models.GettableSilence) {
 	o.Payload = payload
 }
 
@@ -66,7 +66,7 @@ func (o *GetSilencesOK) WriteResponse(rw http.ResponseWriter, producer runtime.P
 	payload := o.Payload
 	if payload == nil {
 		// return empty array
-		payload = models.GettableSilences{}
+		payload = make([]*models.GettableSilence, 0, 50)
 	}
 
 	if err := producer.Produce(rw, payload); err != nil {

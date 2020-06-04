@@ -30,8 +30,8 @@ type Collector struct {
 	name string
 	opts *AcceptanceOpts
 
-	collected map[float64][]models.GettableAlerts
-	expected  map[Interval][]models.GettableAlerts
+	collected map[float64][][]*models.GettableAlert
+	expected  map[Interval][][]*models.GettableAlert
 
 	mtx sync.RWMutex
 }
@@ -42,13 +42,13 @@ func (c *Collector) String() string {
 
 // Collected returns a map of alerts collected by the collector indexed with the
 // receive timestamp.
-func (c *Collector) Collected() map[float64][]models.GettableAlerts {
+func (c *Collector) Collected() map[float64][][]*models.GettableAlert {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()
 	return c.collected
 }
 
-func batchesEqual(as, bs models.GettableAlerts, opts *AcceptanceOpts) bool {
+func batchesEqual(as, bs []*models.GettableAlert, opts *AcceptanceOpts) bool {
 	if len(as) != len(bs) {
 		return false
 	}
@@ -87,7 +87,7 @@ func (c *Collector) latest() float64 {
 func (c *Collector) Want(iv Interval, alerts ...*TestAlert) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	var nas models.GettableAlerts
+	var nas []*models.GettableAlert
 	for _, a := range alerts {
 		nas = append(nas, a.nativeAlert(c.opts))
 	}
@@ -101,7 +101,7 @@ func (c *Collector) add(alerts ...*models.GettableAlert) {
 	defer c.mtx.Unlock()
 	arrival := c.opts.relativeTime(time.Now())
 
-	c.collected[arrival] = append(c.collected[arrival], models.GettableAlerts(alerts))
+	c.collected[arrival] = append(c.collected[arrival], alerts)
 }
 
 func (c *Collector) Check() string {
@@ -112,7 +112,7 @@ func (c *Collector) Check() string {
 	for iv, expected := range c.expected {
 		report += fmt.Sprintf("interval %v\n", iv)
 
-		var alerts []models.GettableAlerts
+		var alerts [][]*models.GettableAlert
 		for at, got := range c.collected {
 			if iv.contains(at) {
 				alerts = append(alerts, got...)
@@ -193,13 +193,11 @@ func alertsToString(as []*models.GettableAlert) (string, error) {
 
 // CompareCollectors compares two collectors based on their collected alerts
 func CompareCollectors(a, b *Collector, opts *AcceptanceOpts) (bool, error) {
-	f := func(collected map[float64][]models.GettableAlerts) []*models.GettableAlert {
+	f := func(collected map[float64][][]*models.GettableAlert) []*models.GettableAlert {
 		result := []*models.GettableAlert{}
 		for _, batches := range collected {
 			for _, batch := range batches {
-				for _, alert := range batch {
-					result = append(result, alert)
-				}
+				result = append(result, batch...)
 			}
 		}
 		return result

@@ -122,7 +122,7 @@ func TestGetSilencesHandler(t *testing.T) {
 		gettableSilence("silence-2-active", "active", updateTime,
 			"2019-01-01T12:00:00+00:00", "2019-01-01T14:00:00+00:00"),
 	}
-	sortSilences(open_api_models.GettableSilences(silences))
+	sortSilences(silences)
 
 	for i, sil := range silences {
 		assertEqualStrings(t, "silence-"+strconv.Itoa(i)+"-"+*sil.Status.State, *sil.ID)

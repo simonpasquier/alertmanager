@@ -72,14 +72,14 @@ func NewGetAlertGroupsOK() *GetAlertGroupsOK {
 Get alert groups response
 */
 type GetAlertGroupsOK struct {
-	Payload models.AlertGroups
+	Payload []*models.AlertGroup
 }
 
 func (o *GetAlertGroupsOK) Error() string {
 	return fmt.Sprintf("[GET /alerts/groups][%d] getAlertGroupsOK  %+v", 200, o.Payload)
 }
 
-func (o *GetAlertGroupsOK) GetPayload() models.AlertGroups {
+func (o *GetAlertGroupsOK) GetPayload() []*models.AlertGroup {
 	return o.Payload
 }
 

@@ -122,12 +122,12 @@ func parseLabels(inputLabels []string) (models.LabelSet, error) {
 }
 
 // TypeMatchers only valid for when you are going to add a silence
-func TypeMatchers(matchers []labels.Matcher) (models.Matchers, error) {
-	typeMatchers := models.Matchers{}
+func TypeMatchers(matchers []labels.Matcher) ([]*models.Matcher, error) {
+	typeMatchers := make([]*models.Matcher, 0, len(matchers))
 	for _, matcher := range matchers {
 		typeMatcher, err := TypeMatcher(matcher)
 		if err != nil {
-			return models.Matchers{}, err
+			return nil, err
 		}
 		typeMatchers = append(typeMatchers, &typeMatcher)
 	}

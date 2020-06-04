@@ -50,7 +50,9 @@ paths:
         '200':
           description: Get silences response
           schema:
-            $ref: '#/definitions/gettableSilences'
+            type: array
+            items:
+              $ref: '#/definitions/gettableSilence'
         '500':
           $ref: '#/responses/InternalServerError'
       parameters:
@@ -171,7 +173,9 @@ paths:
         '200':
           description: Get alerts response
           schema:
-            '$ref': '#/definitions/gettableAlerts'
+            type: array
+            items:
+              '$ref': '#/definitions/gettableAlert'
         '400':
           $ref: '#/responses/BadRequest'
         '500':
@@ -187,7 +191,9 @@ paths:
           description: The alerts to create
           required: true
           schema:
-            $ref: '#/definitions/postableAlerts'
+            type: array
+            items:
+              $ref: '#/definitions/postableAlert'
       responses:
         '200':
           description: Create alerts response
@@ -234,7 +240,9 @@ paths:
         '200':
           description: Get alert groups response
           schema:
-            '$ref': '#/definitions/alertGroups'
+            type: array
+            items:
+              '$ref': '#/definitions/alertGroup'
         '400':
           $ref: '#/responses/BadRequest'
         '500':
@@ -326,7 +334,10 @@ definitions:
     type: object
     properties:
       matchers:
-        $ref: '#/definitions/matchers'
+        type: array
+        items:
+          $ref: '#/definitions/matcher'
+        minItems: 1
       startsAt:
         type: string
         format: date-time
@@ -374,15 +385,6 @@ definitions:
         enum: ["expired", "active", "pending"]
     required:
       - state
-  gettableSilences:
-    type: array
-    items:
-      $ref: '#/definitions/gettableSilence'
-  matchers:
-    type: array
-    items:
-      $ref: '#/definitions/matcher'
-    minItems: 1
   matcher:
     type: object
     properties:
@@ -406,10 +408,6 @@ definitions:
         format: uri
     required:
       - labels
-  gettableAlerts:
-    type: array
-    items:
-      $ref: '#/definitions/gettableAlert'
   gettableAlert:
     allOf:
       - type: object
@@ -442,10 +440,6 @@ definitions:
           - annotations
           - status
       - $ref: '#/definitions/alert'
-  postableAlerts:
-    type: array
-    items:
-      $ref: '#/definitions/postableAlert'
   postableAlert:
     allOf:
       - type: object
@@ -459,10 +453,6 @@ definitions:
           annotations:
             $ref: '#/definitions/labelSet'
       - $ref: '#/definitions/alert'
-  alertGroups:
-    type: array
-    items:
-      $ref: '#/definitions/alertGroup'
   alertGroup:
     type: object
     properties:

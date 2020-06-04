@@ -113,7 +113,7 @@ func (a *alertAddCmd) addAlert(ctx context.Context, _ *kingpin.ParseContext) err
 		EndsAt:      strfmt.DateTime(endsAt),
 	}
 	alertParams := alert.NewPostAlertsParams().WithContext(ctx).
-		WithAlerts(models.PostableAlerts{pa})
+		WithAlerts([]*models.PostableAlert{pa})
 
 	amclient := NewAlertmanagerClient(alertmanagerURL)
 
