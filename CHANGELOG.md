@@ -1,4 +1,6 @@
-## 0.21.0-rc.0 / 2020-06-05
+## 0.21.0 / 2020-06-16
+
+This release remove the HipChat integration as it is end-of-life (effective June 20th 2020).
 
 * [CHANGE] [HipChat] Remove HipChat integration as it is end-of-life. #2282
 * [CHANGE] [amtool] Remove default assignment of environment variables. #2161
