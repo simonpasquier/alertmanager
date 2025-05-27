@@ -15,6 +15,7 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -100,17 +101,16 @@ func NewAlertmanagerClient(amURL *url.URL) *client.AlertmanagerAPI {
 		schemes = []string{amURL.Scheme}
 	}
 
-	cr := clientruntime.New(address, path.Join(amURL.Path, defaultAmApiv2path), schemes)
+	basePath := path.Join(amURL.Path, defaultAmApiv2path)
+	if amURL.RawQuery != "" {
+		basePath = fmt.Sprintf("%s?%s", basePath, amURL.RawQuery)
+	}
 
 	if amURL.User != nil && httpConfigFile != "" {
 		kingpin.Fatalf("basic authentication and http.config.file are mutually exclusive")
 	}
 
-	if amURL.User != nil {
-		password, _ := amURL.User.Password()
-		cr.DefaultAuthentication = clientruntime.BasicAuth(amURL.User.Username(), password)
-	}
-
+	var httpClient *http.Client
 	if httpConfigFile != "" {
 		var err error
 		httpConfig, _, err := promconfig.LoadHTTPConfigFile(httpConfigFile)
@@ -118,11 +118,16 @@ func NewAlertmanagerClient(amURL *url.URL) *client.AlertmanagerAPI {
 			kingpin.Fatalf("failed to load HTTP config file: %v", err)
 		}
 
-		httpclient, err := promconfig.NewClientFromConfig(*httpConfig, "amtool")
+		httpClient, err = promconfig.NewClientFromConfig(*httpConfig, "amtool")
 		if err != nil {
 			kingpin.Fatalf("failed to create a new HTTP client: %v", err)
 		}
-		cr = clientruntime.NewWithClient(address, path.Join(amURL.Path, defaultAmApiv2path), schemes, httpclient)
+	}
+
+	cr := clientruntime.NewWithClient(address, basePath, schemes, httpClient)
+	if amURL.User != nil {
+		password, _ := amURL.User.Password()
+		cr.DefaultAuthentication = clientruntime.BasicAuth(amURL.User.Username(), password)
 	}
 
 	c := client.New(cr, strfmt.Default)
